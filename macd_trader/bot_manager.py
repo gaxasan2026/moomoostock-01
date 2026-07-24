@@ -162,7 +162,7 @@ def _bot_loop(symbol_id: str, cfg_dict: dict, state: BotState):
         tracker = SignalTracker(peak_confirmation_bars=cfg.exit.peak_confirmation_bars)
         risk_mgr = RiskManager(cfg.risk)
         trade_engine = TradeEngine(cfg.entry, cfg.exit, risk_mgr)
-        order_mgr = OrderManager(cfg.order, cfg.opend, cfg.symbol, cfg.market, cfg.macd.timeframe)
+        order_mgr = OrderManager(cfg.order, cfg.opend, cfg.symbol, cfg.market, cfg.macd.timeframe, logger=logger)
         trade_log = TradeLogger(cfg.logging.trade_log_path, cfg.logging.save_trade_log)
 
         order_mgr.connect()
@@ -173,6 +173,8 @@ def _bot_loop(symbol_id: str, cfg_dict: dict, state: BotState):
         while not state.stop_event.is_set():
             df = order_mgr.get_kline_data(kline_num=200)
             if df is None or len(df) < 40:
+                bar_count = 0 if df is None else len(df)
+                logger.warning(f"[{symbol_id}] K線不足 ({bar_count}本) — 5秒後リトライ")
                 time.sleep(5)
                 continue
 

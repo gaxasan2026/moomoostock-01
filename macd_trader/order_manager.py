@@ -8,17 +8,16 @@ from datetime import datetime
 from typing import Optional
 from config_loader import OrderConfig, OpendConfig
 
-logger = logging.getLogger(__name__)
-
-
 class OrderManager:
     def __init__(self, order_cfg: OrderConfig, opend_cfg: OpendConfig,
-                 symbol: str, market: str, timeframe: str = "K_1M"):
+                 symbol: str, market: str, timeframe: str = "K_1M",
+                 logger=None):
         self.cfg = order_cfg
         self.opend = opend_cfg
         self.symbol = symbol
         self.market = market
         self.timeframe = timeframe
+        self._logger = logger or logging.getLogger(__name__)
 
         self._quote_ctx = None
         self._trade_ctx = None
@@ -31,7 +30,7 @@ class OrderManager:
     def connect(self):
         """moomoo OpenDへ接続する"""
         if self.cfg.mock_data:
-            logger.info("📋 モックデータモード: moomoo接続をスキップ（生成データ使用）")
+            self._logger.info("📋 モックデータモード: moomoo接続をスキップ（生成データ使用）")
             self._connected = True
             self._init_mock_data()
             return
@@ -58,13 +57,27 @@ class OrderManager:
                     security_firm=ft.SecurityFirm.FUTUSECURITIES,
                 )
             self._connected = True
-            logger.info(f"✅ moomoo OpenD接続成功 ({self.opend.host}:{self.opend.port})")
+            self._logger.info(f"✅ moomoo OpenD接続成功 ({self.opend.host}:{self.opend.port})")
+
+            # K線データ取得前にサブスクライブが必要
+            from futu import SubType
+            subtype_map = {
+                "K_1M": SubType.K_1M, "K_5M": SubType.K_5M,
+                "K_15M": SubType.K_15M, "K_30M": SubType.K_30M,
+                "K_60M": SubType.K_60M, "K_DAY": SubType.K_DAY,
+            }
+            sub_type = subtype_map.get(self.timeframe, SubType.K_1M)
+            ret, data = self._quote_ctx.subscribe([self.symbol], [sub_type])
+            if ret == ft.RET_OK:
+                self._logger.info(f"✅ サブスクライブ成功: {self.symbol} ({self.timeframe})")
+            else:
+                self._logger.warning(f"サブスクライブ失敗: {data}")
 
         except ImportError:
-            logger.error("futu-api がインストールされていません: pip install futu-api")
+            self._logger.error("futu-api がインストールされていません: pip install futu-api")
             raise
         except Exception as e:
-            logger.error(f"moomoo接続失敗: {e}")
+            self._logger.error(f"moomoo接続失敗: {e}")
             raise
 
     def _init_mock_data(self, total_bars: int = 2000):
@@ -91,7 +104,7 @@ class OrderManager:
         })
         # GC発生位置の10本前から開始（すぐにエントリーを確認できるようにする）
         self._mock_cursor = self._find_first_gc_cursor(kline_num=200, search_from=200)
-        logger.info(f"モックデータ生成完了: {total_bars}本 / 開始位置: bar {self._mock_cursor} (GC約10本前)")
+        self._logger.info(f"モックデータ生成完了: {total_bars}本 / 開始位置: bar {self._mock_cursor} (GC約10本前)")
 
     def _find_first_gc_cursor(self, kline_num: int, search_from: int) -> int:
         """MACDのGCが最初に発生するバーを探し、10本前のカーソル位置を返す"""
@@ -117,7 +130,7 @@ class OrderManager:
         if self._trade_ctx:
             self._trade_ctx.close()
         self._connected = False
-        logger.info("🔌 moomoo接続を切断しました")
+        self._logger.info("🔌 moomoo接続を切断しました")
 
     # ─── リアルタイム価格取得 ────────────────────────────────────
 
@@ -132,14 +145,14 @@ class OrderManager:
             if ret == ft.RET_OK and not data.empty:
                 return float(data["last_price"].iloc[0])
         except Exception as e:
-            logger.error(f"価格取得エラー: {e}")
+            self._logger.error(f"価格取得エラー: {e}")
         return None
 
     def get_kline_data(self, kline_num: int = 200):
         """K線データを取得してDataFrameとして返す"""
         if self.cfg.mock_data:
             if self._mock_df is None or self._mock_cursor >= len(self._mock_df):
-                logger.warning("モックデータが終端に達しました")
+                self._logger.warning("モックデータが終端に達しました")
                 return None
             df = self._mock_df.iloc[self._mock_cursor - kline_num:self._mock_cursor].copy()
             self._mock_cursor += 1
@@ -159,8 +172,10 @@ class OrderManager:
             )
             if ret == ft.RET_OK:
                 return data
+            else:
+                self._logger.error(f"K線取得失敗 (ret={ret}): {data}")
         except Exception as e:
-            logger.error(f"K線取得エラー: {e}")
+            self._logger.error(f"K線取得エラー: {e}")
         return None
 
     # ─── 発注 ────────────────────────────────────────────────────
@@ -175,7 +190,7 @@ class OrderManager:
         if self.cfg.mock_data:
             msg = (f"[MOCK] 買い注文: {self.symbol} {qty}株 "
                    f"@ {'成行' if self.cfg.order_type == 'market' else f'{price:.4f}'}")
-            logger.info(msg)
+            self._logger.info(msg)
             return True, "MOCK_ORDER_BUY"
 
         try:
@@ -200,14 +215,14 @@ class OrderManager:
             )
             if ret == ft.RET_OK:
                 order_id = str(data["order_id"].iloc[0])
-                logger.info(f"✅ 買い注文成功: {order_id}")
+                self._logger.info(f"✅ 買い注文成功: {order_id}")
                 return True, order_id
             else:
-                logger.error(f"買い注文失敗: {data}")
+                self._logger.error(f"買い注文失敗: {data}")
                 return False, str(data)
 
         except Exception as e:
-            logger.error(f"買い注文エラー: {e}")
+            self._logger.error(f"買い注文エラー: {e}")
             return False, str(e)
 
     def place_sell_order(self, price: float, reason: str) -> tuple[bool, str]:
@@ -221,7 +236,7 @@ class OrderManager:
             msg = (f"[MOCK] 売り注文: {self.symbol} {qty}株 "
                    f"@ {'成行' if self.cfg.order_type == 'market' else f'{price:.4f}'} "
                    f"理由={reason}")
-            logger.info(msg)
+            self._logger.info(msg)
             return True, "MOCK_ORDER_SELL"
 
         try:
@@ -246,12 +261,12 @@ class OrderManager:
             )
             if ret == ft.RET_OK:
                 order_id = str(data["order_id"].iloc[0])
-                logger.info(f"✅ 売り注文成功: {order_id}")
+                self._logger.info(f"✅ 売り注文成功: {order_id}")
                 return True, order_id
             else:
-                logger.error(f"売り注文失敗: {data}")
+                self._logger.error(f"売り注文失敗: {data}")
                 return False, str(data)
 
         except Exception as e:
-            logger.error(f"売り注文エラー: {e}")
+            self._logger.error(f"売り注文エラー: {e}")
             return False, str(e)
