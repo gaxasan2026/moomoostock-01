@@ -3,8 +3,9 @@ report.py
 取引終了後に、銘柄ごとの設定値の有用性を評価するレポートを生成する
 
 使い方:
-    python3 report.py            # 本日分のレポート
-    python3 report.py 2026-07-25 # 指定日のレポート
+    python3 report.py                              # 本日分のレポート
+    python3 report.py 2026-07-25                    # 指定日のレポート
+    python3 report.py 2026-07-21_2026-07-24         # 期間指定のレポート（開始日_終了日、両端含む）
 """
 import csv
 import io
@@ -46,7 +47,17 @@ def load_symbols() -> dict:
         return json.load(f).get("symbols", {})
 
 
-def load_trades(symbol_id: str, target_date: str) -> list:
+def parse_date_arg(arg: str) -> tuple[str, str]:
+    """'YYYY-MM-DD' または 'YYYY-MM-DD_YYYY-MM-DD'（期間指定）を (開始日, 終了日) に変換する"""
+    if "_" in arg:
+        start, end = arg.split("_", 1)
+        if start > end:
+            start, end = end, start
+        return start, end
+    return arg, arg
+
+
+def load_trades(symbol_id: str, start_date: str, end_date: str) -> list:
     safe = symbol_id.replace(".", "_")
     path = LOG_DIR / f"trades_{safe}.csv"
     if not path.exists():
@@ -54,7 +65,8 @@ def load_trades(symbol_id: str, target_date: str) -> list:
     rows = []
     with open(path, encoding="utf-8") as f:
         for row in csv.DictReader(f):
-            if row["timestamp"][:10] == target_date:
+            d = row["timestamp"][:10]
+            if start_date <= d <= end_date:
                 rows.append(row)
     return rows
 
@@ -351,18 +363,23 @@ function copyPrompt(key, btn) {{
 
 
 def main():
-    target_date = sys.argv[1] if len(sys.argv) > 1 else datetime.now().strftime("%Y-%m-%d")
+    arg = sys.argv[1] if len(sys.argv) > 1 else datetime.now().strftime("%Y-%m-%d")
+    start_date, end_date = parse_date_arg(arg)
+    is_range = start_date != end_date
+    date_label = f"{start_date} 〜 {end_date}" if is_range else start_date
+    file_label = f"{start_date}_{end_date}" if is_range else start_date
+
     symbols = load_symbols()
     results = []
     raw_by_symbol = {}
     for sid, cfg in symbols.items():
-        rows = load_trades(sid, target_date)
+        rows = load_trades(sid, start_date, end_date)
         if rows:
             results.append(analyze(sid, rows, cfg))
             raw_by_symbol[sid] = rows
 
-    html = render_html(target_date, results, raw_by_symbol)
-    out_path = LOG_DIR / f"report_{target_date}.html"
+    html = render_html(date_label, results, raw_by_symbol)
+    out_path = LOG_DIR / f"report_{file_label}.html"
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     out_path.write_text(html, encoding="utf-8")
     print(f"レポートを生成しました: {out_path}")
