@@ -194,6 +194,7 @@ input[type=checkbox]{width:16px;height:16px;accent-color:#58a6ff}
       <button class="mtab" onclick="switchTab('exit')">エグジット</button>
       <button class="mtab" onclick="switchTab('risk')">リスク</button>
     </div>
+    <div id="symbol-count-banner" style="display:none;padding:8px 18px;font-size:12px;border-bottom:1px solid #30363d"></div>
     <div id="modal-body">
       <!-- 基本設定 -->
       <div class="tab-section active" id="sec-basic">
@@ -571,6 +572,22 @@ function openModal(symbolId) {
   document.getElementById('f-symbol').readOnly = !!symbolId;
   document.getElementById('f-symbol').style.opacity = symbolId ? '.5' : '1';
   switchTab('basic');
+
+  const banner = document.getElementById('symbol-count-banner');
+  if (!symbolId) {
+    const count = symbols.length;
+    const limit = 100;
+    const warn = count >= 8;
+    const color = count >= 15 ? '#f85149' : count >= 8 ? '#d29922' : '#3fb950';
+    const icon = count >= 15 ? '🔴' : count >= 8 ? '⚠️' : 'ℹ️';
+    banner.style.display = 'block';
+    banner.style.background = count >= 8 ? (count >= 15 ? '#3d1f1f' : '#2d2208') : '#161b22';
+    banner.style.color = color;
+    banner.innerHTML = `${icon} 現在 <strong>${count}</strong> 銘柄登録中（理論上限: ${limit}銘柄 × K線種類数）`
+      + (count >= 8 ? `<br><span style="color:#7d8590">　接続が不安定になる場合は銘柄数を減らしてください（推奨: 10銘柄以内）</span>` : '');
+  } else {
+    banner.style.display = 'none';
+  }
 
   if (symbolId) {
     const cfg = symbols.find(s => s.symbol === symbolId);

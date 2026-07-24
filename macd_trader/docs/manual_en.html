@@ -187,6 +187,17 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
   <p style="margin-top:8px">Open <code>http://localhost:5001</code> in your browser.</p>
   <p style="margin-top:4px;font-size:13px;color:var(--text2)">To start manually: <code>cd macd_trader &amp;&amp; python3 web_app.py</code></p>
 
+  <h3>Symbol count limit</h3>
+  <p>The moomoo OpenD API enforces the following subscription limit:</p>
+  <div class="card" style="font-size:13px">
+    <strong>symbols × K-line types ≤ 100</strong> (OpenD official spec)
+  </div>
+  <p style="margin-top:8px">Example: subscribing to K_1M only → up to 100 symbols</p>
+  <div class="callout warn" style="margin-top:12px">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body">The theoretical limit is 100, but as the symbol count increases, so does the number of concurrent OpenD connections, which can cause instability. <strong>We recommend keeping to 10 symbols or fewer</strong> in practice. A warning is shown in the GUI when adding symbols.</div>
+  </div>
+
   <h3>4. Configure symbols and start</h3>
   <ol class="steps">
     <li>Copy <code>data/symbols.example.json</code> to <code>data/symbols.json</code></li>

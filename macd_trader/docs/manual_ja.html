@@ -511,6 +511,17 @@ code {
     <span class="callout-icon">💡</span>
     <div class="callout-body"><strong>OpenDが先、ボットが後。</strong> OpenDが起動していない状態でボットを開始すると接続エラーになります。<br><code>start.sh</code> はサーバーの二重起動を防ぎ、<code>data/symbols.json</code> の存在も確認します。</div>
   </div>
+
+  <h3>監視銘柄数の上限</h3>
+  <p>moomoo OpenD APIのサブスクライブ上限は次の通りです：</p>
+  <div class="card" style="font-size:13px">
+    <strong>銘柄数 × K線種類数 ≦ 100</strong>（OpenD公式仕様）
+  </div>
+  <p style="margin-top:8px">例: K_1M のみ購読の場合 → 最大100銘柄</p>
+  <div class="callout warn" style="margin-top:12px">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body">理論上限は100ですが、銘柄数が増えると同時接続数が増加し、OpenDとの通信が不安定になることがあります。<strong>実用上は10銘柄以内</strong>での運用を推奨します。銘柄追加時に画面上で件数と警告が表示されます。</div>
+  </div>
 </section>
 
 <!-- ══════════════════════════════════════════ -->
