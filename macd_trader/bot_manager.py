@@ -254,7 +254,7 @@ def _bot_loop(symbol_id: str, cfg_dict: dict, state: BotState):
                                 "quantity": cfg.order.quantity,
                                 "entry_price": round(current_price, 4),
                                 "pnl_usd": None, "pnl_pct": None,
-                                "hold_minutes": 0.0, "exit_reason": "",
+                                "hold_minutes": 0.0, "exit_reason": reason,
                                 "timestamp": now.strftime("%H:%M:%S"),
                             })
                             trade_log.log_entry(symbol_id, current_price, cfg.order.quantity,
