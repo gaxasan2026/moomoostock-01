@@ -7,6 +7,7 @@ report.py
     python3 report.py 2026-07-25 # 指定日のレポート
 """
 import csv
+import io
 import json
 import sys
 from collections import defaultdict
@@ -16,6 +17,12 @@ from pathlib import Path
 BASE_DIR = Path(__file__).parent
 LOG_DIR = BASE_DIR / "logs"
 SYMBOLS_PATH = BASE_DIR / "data" / "symbols.json"
+
+CSV_FIELDS = [
+    "timestamp", "action", "symbol", "price", "quantity",
+    "entry_price", "pnl_usd", "pnl_pct",
+    "hold_minutes", "exit_reason", "gc_duration", "daily_trades",
+]
 
 
 def categorize_exit(reason: str) -> str:
@@ -50,6 +57,14 @@ def load_trades(symbol_id: str, target_date: str) -> list:
             if row["timestamp"][:10] == target_date:
                 rows.append(row)
     return rows
+
+
+def rows_to_csv_text(rows: list) -> str:
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=CSV_FIELDS)
+    writer.writeheader()
+    writer.writerows(rows)
+    return buf.getvalue()
 
 
 def analyze(symbol_id: str, rows: list, cfg: dict) -> dict:
@@ -87,17 +102,113 @@ def analyze(symbol_id: str, rows: list, cfg: dict) -> dict:
         "by_reason": dict(by_reason),
         "config": {
             "gc_duration_minutes": entry_cfg.get("gc_duration_minutes"),
+            "macd_histogram_min": entry_cfg.get("macd_histogram_min"),
+            "volume_surge_ratio": entry_cfg.get("volume_surge_ratio"),
             "take_profit_pct": exit_cfg.get("take_profit_pct"),
             "stop_loss_pct": exit_cfg.get("stop_loss_pct"),
             "peak_drop_pct": exit_cfg.get("peak_drop_pct"),
+            "peak_drop_duration_minutes": exit_cfg.get("peak_drop_duration_minutes"),
             "max_hold_minutes": exit_cfg.get("max_hold_minutes"),
         },
     }
 
 
-def render_html(date_str: str, results: list) -> str:
+def build_reason_table_text(by_reason: dict) -> str:
+    lines = ["理由 | 回数 | 合計損益(USD) | 平均損益率"]
+    for cat, v in sorted(by_reason.items(), key=lambda kv: -kv[1]["count"]):
+        avg_pct = v["pnl_pct_sum"] / v["count"]
+        lines.append(f"{cat} | {v['count']} | {v['pnl']:+.2f} | {avg_pct:+.2f}%")
+    return "\n".join(lines)
+
+
+def build_symbol_prompt(date_str: str, r: dict, raw_csv_text: str) -> str:
+    cfg = r["config"]
+    return f"""# MACD自動売買ボットの設定値評価を依頼します
+
+moomoo OpenAPI連携のMACDゴールデンクロス/デッドクロス短期自動売買ボット（Paper Trading）について、
+{date_str} の銘柄「{r['symbol']}」の取引結果から、設定値（エントリー/エグジット条件）が
+実際の値動きに対して適切かどうか評価してください。
+
+## 現在の設定値
+- GC継続時間 (gc_duration_minutes): {cfg['gc_duration_minutes']}分
+- MACDヒストグラム下限 (macd_histogram_min): {cfg['macd_histogram_min']}
+- 出来高倍率 (volume_surge_ratio): {cfg['volume_surge_ratio']}倍
+- 利確ライン (take_profit_pct): {cfg['take_profit_pct']}%
+- 損切りライン (stop_loss_pct): {cfg['stop_loss_pct']}%
+- ピーク下落率 (peak_drop_pct): {cfg['peak_drop_pct']}%
+- ピーク下落確認時間 (peak_drop_duration_minutes): {cfg['peak_drop_duration_minutes']}分
+- 最大保有時間 (max_hold_minutes): {cfg['max_hold_minutes']}分
+
+## 集計結果
+- 取引数: {r['trades']}件　勝率: {r['win_rate']:.1f}%
+- 合計損益: {r['total_pnl']:+.2f} USD　平均損益率: {r['avg_pnl_pct']:+.2f}%
+- 平均保有時間: {r['avg_hold']:.1f}分　平均GC継続(エントリー時): {r['avg_gc_duration']:.1f}分
+
+### エグジット理由の内訳
+{build_reason_table_text(r['by_reason'])}
+
+## 個別取引の生データ (CSV)
+```csv
+{raw_csv_text.strip()}
+```
+
+## 評価してほしいポイント
+1. 利確ライン・損切りラインは実際に機能しているか（一度も到達していない場合、閾値が広すぎる可能性は？）
+2. デッドクロス/ピーク下落による決済が多い場合、その決済タイミングの損益幅は妥当か
+3. エントリー条件（GC継続時間・出来高条件）は厳しすぎる/緩すぎるか
+4. 上記を踏まえ、具体的にどのパラメータをどの値に変更すべきか（数値を提案してください）
+5. 現在のサンプル数で判断を下すにはデータが不足していないか
+"""
+
+
+def build_portfolio_prompt(date_str: str, results: list, raw_by_symbol: dict) -> str:
     total_trades = sum(r["trades"] for r in results)
     total_pnl = sum(r["total_pnl"] for r in results)
+
+    per_symbol_summary = "\n".join(
+        f"- {r['symbol']}: {r['trades']}件 / 勝率{r['win_rate']:.1f}% / "
+        f"損益{r['total_pnl']:+.2f}USD / 主なエグジット理由: "
+        f"{max(r['by_reason'].items(), key=lambda kv: kv[1]['count'])[0] if r['by_reason'] else '—'}"
+        for r in sorted(results, key=lambda x: x["total_pnl"])
+    )
+
+    all_csv_blocks = "\n\n".join(
+        f"### {sid}\n```csv\n{rows_to_csv_text(rows).strip()}\n```"
+        for sid, rows in raw_by_symbol.items()
+    )
+
+    return f"""# MACD自動売買ボット 全銘柄の設定値評価を依頼します
+
+moomoo OpenAPI連携のMACDゴールデンクロス/デッドクロス短期自動売買ボット（Paper Trading）について、
+{date_str} の全{len(results)}銘柄の取引結果から、各銘柄の設定値の有用性と、
+銘柄間の傾向の違いを評価してください。
+
+## 全体サマリー
+全銘柄合計 {total_trades}取引 ｜ 合計損益 {total_pnl:+.2f} USD
+
+## 銘柄別サマリー
+{per_symbol_summary}
+
+## 個別取引の生データ (CSV, 銘柄別)
+{all_csv_blocks}
+
+## 評価してほしいポイント
+1. 銘柄ごとに利確・損切り・デッドクロス・ピーク下落のどれで決済されることが多いか、傾向の違い
+2. 損益が悪い銘柄と良い銘柄で、設定値または値動きの特性にどんな違いがありそうか
+3. 全銘柄共通で調整した方が良さそうなパラメータはあるか
+4. 逆に銘柄ごとに個別調整すべきパラメータはあるか
+5. このまま継続監視すべき銘柄、設定変更すべき銘柄、監視停止を検討すべき銘柄の仕分け
+"""
+
+
+def render_html(date_str: str, results: list, raw_by_symbol: dict) -> str:
+    total_trades = sum(r["trades"] for r in results)
+    total_pnl = sum(r["total_pnl"] for r in results)
+
+    prompts = {r["symbol"]: build_symbol_prompt(date_str, r, rows_to_csv_text(raw_by_symbol[r["symbol"]]))
+               for r in results}
+    if results:
+        prompts["__portfolio__"] = build_portfolio_prompt(date_str, results, raw_by_symbol)
 
     rows_html = []
     for r in sorted(results, key=lambda x: x["total_pnl"]):
@@ -109,9 +220,13 @@ def render_html(date_str: str, results: list) -> str:
             for cat, v in sorted(r["by_reason"].items(), key=lambda kv: -kv[1]["count"])
         )
         cfg = r["config"]
+        sym = r["symbol"]
         rows_html.append(f"""
         <section class="symbol-block">
-          <h2>{r['symbol']}</h2>
+          <div class="block-head">
+            <h2>{sym}</h2>
+            <button class="copy-btn" onclick="copyPrompt('{sym}', this)">🤖 AI評価用にコピー</button>
+          </div>
           <div class="stat-row">
             <div class="stat"><span class="label">取引数</span><span class="val">{r['trades']}</span></div>
             <div class="stat"><span class="label">勝率</span><span class="val">{r['win_rate']:.1f}%</span></div>
@@ -141,15 +256,23 @@ def render_html(date_str: str, results: list) -> str:
         </section>
         """)
 
+    portfolio_button = (
+        '<button class="copy-btn portfolio" onclick="copyPrompt(\'__portfolio__\', this)">'
+        '🤖 全銘柄まとめてAI評価用にコピー</button>'
+        if results else ""
+    )
+
     return f"""<!doctype html>
 <html lang="ja"><head><meta charset="utf-8">
 <title>MACD Trader レポート {date_str}</title>
 <style>
   body {{ background:#0d1117; color:#e6edf3; font-family:-apple-system,'Hiragino Sans',sans-serif; margin:0; padding:32px; }}
   h1 {{ font-size:20px; margin-bottom:4px; }}
-  .summary {{ color:#7d8590; font-size:14px; margin-bottom:28px; }}
+  .summary-row {{ display:flex; align-items:center; justify-content:space-between; margin-bottom:28px; flex-wrap:wrap; gap:12px; }}
+  .summary {{ color:#7d8590; font-size:14px; }}
   .symbol-block {{ background:#161b22; border:1px solid #30363d; border-radius:10px; padding:20px 24px; margin-bottom:20px; }}
-  .symbol-block h2 {{ font-size:16px; margin:0 0 12px; }}
+  .block-head {{ display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }}
+  .symbol-block h2 {{ font-size:16px; margin:0; }}
   .symbol-block h3 {{ font-size:13px; color:#7d8590; margin:18px 0 8px; text-transform:uppercase; letter-spacing:.03em; }}
   .stat-row {{ display:flex; flex-wrap:wrap; gap:20px; }}
   .stat {{ display:flex; flex-direction:column; gap:2px; }}
@@ -161,11 +284,69 @@ def render_html(date_str: str, results: list) -> str:
   td.num, th {{ font-variant-numeric:tabular-nums; }}
   td.sub {{ color:#e6edf3; }}
   .config-table td {{ color:#79c0ff; }}
+  .copy-btn {{ background:#21262d; border:1px solid #30363d; color:#e6edf3; padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer; white-space:nowrap; }}
+  .copy-btn:hover {{ background:#30363d; }}
+  .copy-btn.portfolio {{ background:#1f6feb; border-color:#1f6feb; font-size:13px; padding:8px 16px; }}
+  .copy-btn.portfolio:hover {{ background:#388bfd; }}
+  .copy-btn.copied {{ background:#238636; border-color:#2ea043; }}
+  #toast {{ position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#238636; color:#fff; padding:10px 20px; border-radius:8px; font-size:13px; opacity:0; transition:opacity .2s; pointer-events:none; }}
 </style></head>
 <body>
   <h1>MACD Trader 日次レポート</h1>
-  <div class="summary">{date_str} ｜ 全銘柄合計 {total_trades}取引 ｜ 合計損益 {total_pnl:+.2f} USD</div>
+  <div class="summary-row">
+    <div class="summary">{date_str} ｜ 全銘柄合計 {total_trades}取引 ｜ 合計損益 {total_pnl:+.2f} USD</div>
+    {portfolio_button}
+  </div>
   {''.join(rows_html) if rows_html else '<p style="color:#7d8590">この日の取引データがありません。</p>'}
+
+  <div id="toast">クリップボードにコピーしました</div>
+
+<script>
+const PROMPTS = {json.dumps(prompts, ensure_ascii=False)};
+
+function showCopied(btn) {{
+  const toast = document.getElementById('toast');
+  toast.style.opacity = 1;
+  setTimeout(() => toast.style.opacity = 0, 2000);
+  if (btn) {{
+    const original = btn.textContent;
+    btn.textContent = '✅ コピー済み';
+    btn.classList.add('copied');
+    setTimeout(() => {{ btn.textContent = original; btn.classList.remove('copied'); }}, 2000);
+  }}
+}}
+
+function fallbackCopy(text, btn) {{
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.left = '-9999px';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  let ok = false;
+  try {{
+    ok = document.execCommand('copy');
+  }} catch (e) {{
+    ok = false;
+  }}
+  document.body.removeChild(ta);
+  if (ok) {{
+    showCopied(btn);
+  }} else {{
+    window.prompt('自動コピーに失敗しました。以下を選択して Cmd+C でコピーしてください:', text);
+  }}
+}}
+
+function copyPrompt(key, btn) {{
+  const text = PROMPTS[key];
+  if (navigator.clipboard && navigator.clipboard.writeText) {{
+    navigator.clipboard.writeText(text).then(() => showCopied(btn)).catch(() => fallbackCopy(text, btn));
+  }} else {{
+    fallbackCopy(text, btn);
+  }}
+}}
+</script>
 </body></html>"""
 
 
@@ -173,12 +354,14 @@ def main():
     target_date = sys.argv[1] if len(sys.argv) > 1 else datetime.now().strftime("%Y-%m-%d")
     symbols = load_symbols()
     results = []
+    raw_by_symbol = {}
     for sid, cfg in symbols.items():
         rows = load_trades(sid, target_date)
         if rows:
             results.append(analyze(sid, rows, cfg))
+            raw_by_symbol[sid] = rows
 
-    html = render_html(target_date, results)
+    html = render_html(target_date, results, raw_by_symbol)
     out_path = LOG_DIR / f"report_{target_date}.html"
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     out_path.write_text(html, encoding="utf-8")
