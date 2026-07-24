@@ -169,14 +169,24 @@ def _bot_loop(symbol_id: str, cfg_dict: dict, state: BotState):
         logger.info(f"[{symbol_id}] 監視開始")
         state.status = "監視中"
         last_bar_time = None
+        fail_count = 0
 
         while not state.stop_event.is_set():
             df = order_mgr.get_kline_data(kline_num=200)
             if df is None or len(df) < 40:
                 bar_count = 0 if df is None else len(df)
-                logger.warning(f"[{symbol_id}] K線不足 ({bar_count}本) — 5秒後リトライ")
+                fail_count += 1
+                logger.warning(f"[{symbol_id}] K線不足 ({bar_count}本) — 5秒後リトライ ({fail_count}回目)")
+                if fail_count >= 3:
+                    logger.warning(f"[{symbol_id}] 接続を再試行します...")
+                    try:
+                        order_mgr.reconnect()
+                        fail_count = 0
+                    except Exception as re:
+                        logger.error(f"[{symbol_id}] 再接続失敗: {re}")
                 time.sleep(5)
                 continue
+            fail_count = 0
 
             df = macd_engine.calculate(df)
             macd_vals = macd_engine.get_latest(df)

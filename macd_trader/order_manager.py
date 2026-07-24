@@ -126,11 +126,27 @@ class OrderManager:
     def disconnect(self):
         """接続を切断する"""
         if self._quote_ctx:
-            self._quote_ctx.close()
+            try:
+                self._quote_ctx.close()
+            except Exception:
+                pass
         if self._trade_ctx:
-            self._trade_ctx.close()
+            try:
+                self._trade_ctx.close()
+            except Exception:
+                pass
+        self._quote_ctx = None
+        self._trade_ctx = None
         self._connected = False
         self._logger.info("🔌 moomoo接続を切断しました")
+
+    def reconnect(self):
+        """切断後に再接続する"""
+        self._logger.info(f"🔄 再接続中... ({self.symbol})")
+        self.disconnect()
+        import time as _time
+        _time.sleep(3)
+        self.connect()
 
     # ─── リアルタイム価格取得 ────────────────────────────────────
 
