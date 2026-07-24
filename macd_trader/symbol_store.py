@@ -2,6 +2,7 @@
 symbol_store.py
 銘柄設定を data/symbols.json で永続管理する
 """
+import copy
 import json
 from pathlib import Path
 from typing import Optional
@@ -23,7 +24,7 @@ DEFAULT_CONFIG: dict = {
 
 
 def _deep_merge(base: dict, override: dict) -> dict:
-    result = dict(base)
+    result = copy.deepcopy(base)
     for key, val in override.items():
         if key in result and isinstance(result[key], dict) and isinstance(val, dict):
             result[key] = _deep_merge(result[key], val)
