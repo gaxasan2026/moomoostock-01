@@ -100,6 +100,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
     <a href="#dashboard">Dashboard</a>
     <a href="#symbols">Symbols</a>
     <a href="#botcontrol">Bot Control</a>
+    <a href="#report">Post-Market Report</a>
   </div>
   <div>
     <div class="sidebar-label">Configuration</div>
@@ -259,6 +260,43 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
   <div class="callout warn">
     <span class="callout-icon">⚠️</span>
     <div class="callout-body"><strong>Open positions are not closed automatically when a bot stops.</strong> Check and manage any open positions manually in the moomoo app.</div>
+  </div>
+</section>
+
+<section id="report">
+  <h2>Post-Market Report</h2>
+  <p>After the trading day ends, run <code>report.py</code> to generate an HTML report evaluating whether each symbol's configured parameter values were actually effective given the day's price action.</p>
+
+  <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
+    cd macd_trader<br>
+    python3 report.py &nbsp;&nbsp;&nbsp;&nbsp;# today<br>
+    python3 report.py 2026-07-25 &nbsp;&nbsp;&nbsp;&nbsp;# a specific date<br>
+    python3 report.py 2026-07-21_2026-07-24 &nbsp;&nbsp;&nbsp;&nbsp;# a date range (start_end, inclusive)
+  </div>
+  <p style="margin-top:8px">Output goes to <code>logs/report_&lt;date&gt;.html</code> (private, not tracked by Git). Open it in your browser.</p>
+
+  <h3>What's in the report</h3>
+  <p>For each symbol:</p>
+  <ul style="margin:8px 0 0 20px;font-size:14px;color:var(--text2);line-height:1.8">
+    <li>Trade count, win rate, total PnL, average PnL%, average hold time</li>
+    <li>Average GC duration at entry</li>
+    <li><strong>Exit-reason breakdown</strong> (take-profit / stop-loss / dead-cross / peak-drop / max-hold-time — count and PnL for each)</li>
+    <li>Comparison against the currently configured thresholds (GC duration, take-profit, stop-loss, peak-drop %, max hold time)</li>
+  </ul>
+
+  <h3>Copy for AI review</h3>
+  <p>Each symbol block has a <strong>🤖 AI評価用にコピー</strong> (Copy for AI Review) button, and there's a <strong>🤖 全銘柄まとめてAI評価用にコピー</strong> (Copy All Symbols) button at the top. Clicking copies the following to your clipboard as one block of text:</p>
+  <ul style="margin:8px 0 0 20px;font-size:14px;color:var(--text2);line-height:1.8">
+    <li>The currently configured thresholds</li>
+    <li>Aggregated results (trade count, win rate, PnL, exit-reason breakdown)</li>
+    <li>Raw per-trade data (CSV)</li>
+    <li>A set of evaluation questions (is take-profit/stop-loss actually effective, are entry conditions too strict/loose, concrete parameter change suggestions, etc.)</li>
+  </ul>
+  <p style="margin-top:8px">Paste the copied text directly into a Claude Code chat to get parameter-tuning suggestions.</p>
+
+  <div class="callout tip">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body"><strong>Why ask an AI instead of building judgment logic into the report?</strong> Hard-coding thresholds like "warn if take-profit hit rate is below X%" means the rules themselves need maintenance every time the strategy changes. Handing the raw data to an AI for evaluation each time stays flexible without any code changes.</div>
   </div>
 </section>
 
@@ -542,7 +580,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
   <ol class="steps">
     <li><strong>Mock validation (1 day)</strong><br>Enable mock_data=true. Confirm GC/DC detection, entry, exit, and logging work correctly.</li>
     <li><strong>Paper Trading — 1 symbol, 2 weeks</strong><br>Set mock_data=false, paper_trading=true. Run on one liquid symbol (e.g. US.NVDA) at K_5M during market hours.</li>
-    <li><strong>Analyze the trade log</strong><br>Review <code>logs/trades_*.csv</code>. Target: win rate &gt;40%, avg win &gt; avg loss × 1.5.</li>
+    <li><strong>Analyze the results</strong><br>Run <code>python3 report.py</code> and use "🤖 AI評価用にコピー" to have an AI evaluate the configured thresholds. Target: win rate &gt;40%, avg win &gt; avg loss × 1.5.</li>
     <li><strong>Adjust parameters</strong><br>Find patterns in losing trades (e.g. all during lunch hours). Tighten the GC duration or add a time-of-day restriction.</li>
     <li><strong>Go live — minimum size</strong><br>Set paper_trading=false with quantity=1. Run for one week to confirm real fills match paper results.</li>
     <li><strong>Scale gradually</strong><br>Increase position size monthly as confidence grows. Never scale faster than your verified edge justifies.</li>

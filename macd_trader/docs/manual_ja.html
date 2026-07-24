@@ -411,6 +411,7 @@ code {
     <a href="#dashboard">画面の見方</a>
     <a href="#symbols">銘柄管理</a>
     <a href="#botcontrol">ボット操作</a>
+    <a href="#report">取引後レポート</a>
   </div>
   <div class="sidebar-section">
     <div class="sidebar-label">設定値ガイド</div>
@@ -596,6 +597,44 @@ code {
   <div class="callout warn">
     <span class="callout-icon">⚠️</span>
     <div class="callout-body"><strong>ポジション保有中の停止に注意。</strong> ボットを強制停止してもポジションは自動的にクローズされません。moomooアプリから手動でポジションを確認・決済してください。</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="report">
+  <h2>取引後レポート</h2>
+  <p>取引時間終了後、<code>report.py</code> を実行すると、銘柄ごとの設定値が実際の値動きに対して有効だったかを評価するためのHTMLレポートを生成できます。</p>
+
+  <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
+    cd macd_trader<br>
+    python3 report.py &nbsp;&nbsp;&nbsp;&nbsp;# 本日分<br>
+    python3 report.py 2026-07-25 &nbsp;&nbsp;&nbsp;&nbsp;# 指定日<br>
+    python3 report.py 2026-07-21_2026-07-24 &nbsp;&nbsp;&nbsp;&nbsp;# 期間指定（開始日_終了日、両端含む）
+  </div>
+  <p style="margin-top:8px">生成物は <code>logs/report_日付.html</code>（非公開・Git管理外）。ブラウザで開いて確認します。</p>
+
+  <h3>レポートの内容</h3>
+  <p>銘柄ごとに以下を集計して表示します。</p>
+  <ul style="margin:8px 0 0 20px;font-size:14px;color:var(--text2);line-height:1.8">
+    <li>取引数・勝率・合計損益・平均損益率・平均保有時間</li>
+    <li>平均GC継続時間（エントリー時）</li>
+    <li><strong>エグジット理由の内訳</strong>（利確／損切り／デッドクロス／ピーク下落／保有時間切れ、それぞれの回数と損益）</li>
+    <li>現在の設定値（GC継続時間・利確ライン・損切りライン・ピーク下落率・最大保有時間）との対比</li>
+  </ul>
+
+  <h3>AI評価用にコピー</h3>
+  <p>各銘柄ブロックの <strong>🤖 AI評価用にコピー</strong> ボタン、および上部の <strong>🤖 全銘柄まとめてAI評価用にコピー</strong> ボタンを押すと、以下をまとめたテキストがクリップボードにコピーされます。</p>
+  <ul style="margin:8px 0 0 20px;font-size:14px;color:var(--text2);line-height:1.8">
+    <li>現在の設定値</li>
+    <li>集計結果（取引数・勝率・損益・エグジット理由内訳）</li>
+    <li>個別取引の生データ（CSV）</li>
+    <li>評価してほしい観点（利確/損切りラインの有効性、エントリー条件の妥当性、具体的なパラメータ変更案など）</li>
+  </ul>
+  <p style="margin-top:8px">コピーした内容をそのままClaude Codeのチャットに貼り付けて送信すると、パラメータ調整の提案を受けられます。</p>
+
+  <div class="callout tip">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body"><strong>なぜレポート内蔵の判定ロジックではなくAIに依頼するのか。</strong> 「利確○%未満なら警告」のような閾値をコードに埋め込むと、戦略の変更のたびにルール自体をメンテナンスする必要があります。生データをAIに渡して都度評価してもらう方式なら、コード変更なしで柔軟に判断できます。</div>
   </div>
 </section>
 
@@ -1209,7 +1248,7 @@ code {
   <ol class="steps">
     <li><strong>モック動作確認（1日）</strong><br>mock_data=true でアプリの動作、GC/DC検出、売買ロジックを確認する</li>
     <li><strong>Paper Trading — 1銘柄で2週間</strong><br>高流動性の1銘柄（例: US.NVDA）をK_5Mで設定し、市場時間中に2週間以上稼働させる</li>
-    <li><strong>結果の分析</strong><br>取引ログ（logs/trades_*.csv）を確認。勝率40%以上、平均利益 > 平均損失×1.5 を目標とする</li>
+    <li><strong>結果の分析</strong><br><code>python3 report.py</code> でレポートを生成し、「🤖 AI評価用にコピー」で設定値の有用性をAIに評価してもらう。勝率40%以上、平均利益 &gt; 平均損失×1.5 を目標とする</li>
     <li><strong>パラメータ調整</strong><br>負けパターンを分析（ランチタイムに集中している等）し、時間帯制限やGC継続時間を調整する</li>
     <li><strong>リアル取引 — 最小ポジション</strong><br>paper_trading=false に切り替え、quantity=1 の最小ポジションで1週間稼働させる</li>
     <li><strong>段階的なスケールアップ</strong><br>継続的な利益を確認しながら、1ヶ月ごとにポジションサイズを増やしていく。急拡大は禁物。</li>
