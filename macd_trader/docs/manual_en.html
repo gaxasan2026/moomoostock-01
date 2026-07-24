@@ -180,11 +180,12 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
   <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">pip install -r requirements.txt</div>
 
   <h3>3. Start the Web GUI</h3>
+  <p>Run the included launcher script — it stops any existing server, verifies <code>symbols.json</code> exists, and starts the app.</p>
   <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
-    cd macd_trader<br>
-    python3 web_app.py
+    bash /path/to/moomoostock-01/start.sh
   </div>
   <p style="margin-top:8px">Open <code>http://localhost:5001</code> in your browser.</p>
+  <p style="margin-top:4px;font-size:13px;color:var(--text2)">To start manually: <code>cd macd_trader &amp;&amp; python3 web_app.py</code></p>
 
   <h3>4. Configure symbols and start</h3>
   <ol class="steps">

@@ -500,16 +500,16 @@ code {
   </ol>
 
   <h3>2. Web アプリの起動</h3>
-  <p>ターミナルで以下を実行するか、Claude Codeのプレビューから起動します。</p>
+  <p>リポジトリ直下の <code>start.sh</code> を実行するだけで起動できます。</p>
   <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
-    cd /path/to/moomoostock-01/macd_trader<br>
-    python3 web_app.py
+    bash /path/to/moomoostock-01/start.sh
   </div>
-  <p style="margin-top:8px">ブラウザで <code>http://localhost:5001</code> を開いてください。</p>
+  <p style="margin-top:8px">起動後、ブラウザで <code>http://localhost:5001</code> を開いてください。</p>
+  <p style="margin-top:4px;font-size:13px;color:var(--text2)">※ 手動で起動する場合: <code>cd macd_trader &amp;&amp; python3 web_app.py</code></p>
 
   <div class="callout tip">
     <span class="callout-icon">💡</span>
-    <div class="callout-body"><strong>OpenDが先、ボットが後。</strong> OpenDが起動していない状態でボットを開始すると接続エラーになります。</div>
+    <div class="callout-body"><strong>OpenDが先、ボットが後。</strong> OpenDが起動していない状態でボットを開始すると接続エラーになります。<br><code>start.sh</code> はサーバーの二重起動を防ぎ、<code>data/symbols.json</code> の存在も確認します。</div>
   </div>
 </section>
 
