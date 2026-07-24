@@ -189,9 +189,9 @@ class OrderManager:
             if ret == ft.RET_OK:
                 return data
             else:
-                self._logger.error(f"K線取得失敗 (ret={ret}): {data}")
+                self._logger.warning(f"K線取得失敗 (ret={ret}): {data}")
         except Exception as e:
-            self._logger.error(f"K線取得エラー: {e}")
+            self._logger.warning(f"K線取得エラー: {e}")
         return None
 
     # ─── 発注 ────────────────────────────────────────────────────
