@@ -54,7 +54,7 @@ class TradeEngine:
             if volume_ratio < self.entry.volume_surge_ratio:
                 return False, f"出来高不足 ({volume_ratio:.2f}x < {self.entry.volume_surge_ratio}x)"
 
-        return True, f"✅ エントリー条件成立 GC継続{tracker.gc_duration_minutes:.1f}分"
+        return True, f"GC継続 {tracker.gc_duration_minutes:.1f}分"
 
     # ─── エグジット判定 ──────────────────────────────────────────
 
