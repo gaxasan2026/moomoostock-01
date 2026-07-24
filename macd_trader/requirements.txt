@@ -1,0 +1,5 @@
+# MACD Trader 依存パッケージ
+futu-api>=9.0.0       # moomoo OpenAPI クライアント
+pandas>=2.0.0         # データ処理
+numpy>=1.24.0         # 数値計算
+PyYAML>=6.0           # 設定ファイル読み込み

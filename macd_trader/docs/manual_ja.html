@@ -1,0 +1,1234 @@
+
+<title>MACD Trader — 操作マニュアル</title>
+<style>
+/* ── Token system ─────────────────────────────────────────── */
+:root {
+  --bg:        #f6f5f1;
+  --surface:   #ffffff;
+  --surface2:  #eeecea;
+  --border:    #dedad4;
+  --text:      #1a2038;
+  --text2:     #5a637a;
+  --text3:     #8a93aa;
+  --accent:    #1a5fc0;
+  --accent-bg: #e8f0fd;
+  --green:     #147a4e;
+  --green-bg:  #e4f5ec;
+  --red:       #c0301a;
+  --red-bg:    #fceae8;
+  --amber:     #96640d;
+  --amber-bg:  #fdf4e0;
+  --navy:      #0e2140;
+  --mono:      'SF Mono', 'Fira Code', 'Consolas', monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:        #0c1220;
+    --surface:   #131c2e;
+    --surface2:  #1a2540;
+    --border:    #253045;
+    --text:      #dde4f0;
+    --text2:     #8a97b5;
+    --text3:     #58688a;
+    --accent:    #4d8fe8;
+    --accent-bg: #0e1f42;
+    --green:     #2dc47a;
+    --green-bg:  #0a2b1a;
+    --red:       #f0614a;
+    --red-bg:    #2e0e0a;
+    --amber:     #e8a830;
+    --amber-bg:  #2a1e04;
+    --navy:      #dde4f0;
+  }
+}
+:root[data-theme="light"] {
+  --bg:#f6f5f1;--surface:#ffffff;--surface2:#eeecea;--border:#dedad4;
+  --text:#1a2038;--text2:#5a637a;--text3:#8a93aa;--accent:#1a5fc0;
+  --accent-bg:#e8f0fd;--green:#147a4e;--green-bg:#e4f5ec;--red:#c0301a;
+  --red-bg:#fceae8;--amber:#96640d;--amber-bg:#fdf4e0;--navy:#0e2140;
+}
+:root[data-theme="dark"] {
+  --bg:#0c1220;--surface:#131c2e;--surface2:#1a2540;--border:#253045;
+  --text:#dde4f0;--text2:#8a97b5;--text3:#58688a;--accent:#4d8fe8;
+  --accent-bg:#0e1f42;--green:#2dc47a;--green-bg:#0a2b1a;--red:#f0614a;
+  --red-bg:#2e0e0a;--amber:#e8a830;--amber-bg:#2a1e04;--navy:#dde4f0;
+}
+
+/* ── Reset & base ─────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.7;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ── Layout ───────────────────────────────────────────────── */
+.layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  grid-template-rows: auto 1fr;
+  min-height: 100vh;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+@media (max-width: 768px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+}
+
+/* ── Header ───────────────────────────────────────────────── */
+header {
+  grid-column: 1 / -1;
+  background: var(--navy);
+  color: #fff;
+  padding: 28px 40px;
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+}
+.header-badge {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  background: rgba(255,255,255,.15);
+  border: 1px solid rgba(255,255,255,.25);
+  border-radius: 4px;
+  padding: 3px 9px;
+  color: rgba(255,255,255,.85);
+  align-self: center;
+  white-space: nowrap;
+}
+header h1 {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  line-height: 1.2;
+  color: #fff;
+}
+header p {
+  font-size: 13px;
+  color: rgba(255,255,255,.65);
+  margin-top: 4px;
+}
+.header-text { flex: 1; }
+
+/* ── Sidebar ──────────────────────────────────────────────── */
+.sidebar {
+  padding: 28px 0 40px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+}
+.sidebar-section {
+  margin-bottom: 4px;
+}
+.sidebar-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text3);
+  padding: 16px 24px 6px;
+}
+.sidebar a {
+  display: block;
+  font-size: 13px;
+  color: var(--text2);
+  padding: 5px 24px;
+  border-left: 2px solid transparent;
+  transition: color .15s, border-color .15s;
+}
+.sidebar a:hover, .sidebar a.active {
+  color: var(--accent);
+  border-left-color: var(--accent);
+  background: var(--accent-bg);
+  text-decoration: none;
+}
+
+/* ── Main content ─────────────────────────────────────────── */
+main {
+  padding: 40px 48px 80px;
+  max-width: 760px;
+}
+section {
+  margin-bottom: 56px;
+  scroll-margin-top: 24px;
+}
+h2 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--navy);
+  letter-spacing: -.02em;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--border);
+  text-wrap: balance;
+}
+h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 28px 0 10px;
+  text-wrap: balance;
+}
+p { margin-bottom: 12px; color: var(--text2); }
+p strong { color: var(--text); }
+
+/* ── Cards ────────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px 24px;
+  margin-bottom: 12px;
+}
+
+/* ── Param table ──────────────────────────────────────────── */
+.param-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  margin: 12px 0 20px;
+}
+.param-table th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--text3);
+  padding: 8px 12px;
+  border-bottom: 2px solid var(--border);
+}
+.param-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.param-table tr:last-child td { border-bottom: none; }
+.param-table .pname {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--accent);
+  white-space: nowrap;
+  width: 1%;
+}
+.param-table .pdefault {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text3);
+  white-space: nowrap;
+  width: 1%;
+  font-variant-numeric: tabular-nums;
+}
+.param-table .pdesc { color: var(--text); line-height: 1.55; }
+.param-table .pdesc small {
+  display: block;
+  margin-top: 4px;
+  color: var(--text2);
+  font-size: 12px;
+}
+.param-table .pdesc .range {
+  display: inline-block;
+  margin-top: 5px;
+  font-size: 11.5px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 8px;
+  color: var(--text3);
+  font-family: var(--mono);
+}
+.param-wrap { overflow-x: auto; }
+
+/* ── Badge-style labels ───────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.badge-green { background: var(--green-bg); color: var(--green); }
+.badge-red   { background: var(--red-bg);   color: var(--red); }
+.badge-blue  { background: var(--accent-bg); color: var(--accent); }
+.badge-gray  { background: var(--surface2);  color: var(--text2); }
+.badge-amber { background: var(--amber-bg);  color: var(--amber); }
+
+/* ── Callouts ─────────────────────────────────────────────── */
+.callout {
+  display: flex;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: 7px;
+  border-left: 3px solid;
+  margin: 16px 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+.callout-icon { font-size: 17px; flex-shrink: 0; margin-top: 1px; }
+.callout-body { color: var(--text); }
+.callout-body strong { color: inherit; }
+.callout.tip   { background: var(--accent-bg); border-color: var(--accent); }
+.callout.warn  { background: var(--amber-bg);  border-color: var(--amber); }
+.callout.danger{ background: var(--red-bg);    border-color: var(--red); }
+.callout.pro   { background: var(--green-bg);  border-color: var(--green); }
+
+/* ── Step list ────────────────────────────────────────────── */
+.steps { list-style: none; counter-reset: step; }
+.steps li {
+  counter-increment: step;
+  display: flex;
+  gap: 14px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: var(--text2);
+}
+.steps li::before {
+  content: counter(step);
+  width: 24px; height: 24px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ── Status grid ──────────────────────────────────────────── */
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin: 12px 0;
+}
+.status-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.status-card .sc-badge { flex-shrink: 0; }
+.status-card .sc-label { font-size: 12px; font-weight: 600; color: var(--text); }
+.status-card .sc-desc  { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+/* ── Pro section ──────────────────────────────────────────── */
+.pro-header {
+  background: var(--navy);
+  color: #fff;
+  border-radius: 10px;
+  padding: 24px 28px;
+  margin-bottom: 24px;
+}
+.pro-header h2 {
+  color: #fff;
+  border-bottom-color: rgba(255,255,255,.2);
+  margin-bottom: 8px;
+}
+.pro-header p { color: rgba(255,255,255,.65); margin: 0; }
+
+.insight-block {
+  border-left: 3px solid var(--border);
+  padding-left: 18px;
+  margin: 20px 0;
+}
+.insight-block h3 {
+  margin-top: 0;
+  font-size: 14px;
+}
+
+/* ── Time table ───────────────────────────────────────────── */
+.time-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13.5px;
+}
+.time-row:last-child { border-bottom: none; }
+.time-slot {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text3);
+  white-space: nowrap;
+  width: 130px;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+.time-body { color: var(--text2); }
+.time-body strong { color: var(--text); }
+
+/* ── Divider ──────────────────────────────────────────────── */
+hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+code {
+  font-family: var(--mono);
+  font-size: 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  color: var(--accent);
+}
+</style>
+
+<div class="layout">
+
+<!-- ── Header ── -->
+<header>
+  <div class="header-text">
+    <h1>MACD Trader</h1>
+    <p>moomoo証券 OpenAPI 自動売買システム — 操作マニュアル v1.0</p>
+  </div>
+  <span class="header-badge">Paper Trading対応</span>
+</header>
+
+<!-- ── Sidebar ── -->
+<nav class="sidebar">
+  <div class="sidebar-section">
+    <div class="sidebar-label">基本操作</div>
+    <a href="#overview">アプリ概要</a>
+    <a href="#setup">起動手順</a>
+    <a href="#dashboard">画面の見方</a>
+    <a href="#symbols">銘柄管理</a>
+    <a href="#botcontrol">ボット操作</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">設定値ガイド</div>
+    <a href="#config-basic">基本設定</a>
+    <a href="#config-macd">MACD</a>
+    <a href="#config-entry">エントリー条件</a>
+    <a href="#config-exit">エグジット条件</a>
+    <a href="#config-risk">リスク管理</a>
+    <a href="#config-opend">OpenD接続</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">プロの視点</div>
+    <a href="#pro-overview">戦略の前提</a>
+    <a href="#pro-symbols">銘柄選択</a>
+    <a href="#pro-timing">取引時間帯</a>
+    <a href="#pro-params">パラメータ最適化</a>
+    <a href="#pro-risk">リスク管理実践</a>
+    <a href="#pro-pitfalls">よくある失敗</a>
+    <a href="#pro-workflow">推奨ワークフロー</a>
+  </div>
+</nav>
+
+<!-- ── Main ── -->
+<main>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="overview">
+  <h2>アプリ概要</h2>
+  <p>MACD Trader は、moomoo証券のOpenAPIを使用してMACDのゴールデンクロス（GC）／デッドクロス（DC）シグナルを検出し、複数銘柄を同時に自動売買するWebGUIアプリケーションです。</p>
+
+  <div class="status-grid" style="grid-template-columns:1fr 1fr 1fr; margin-top:16px;">
+    <div class="card" style="padding:16px;">
+      <div style="font-size:22px;margin-bottom:6px;">📡</div>
+      <div style="font-size:13px;font-weight:700;color:var(--text)">リアル接続</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:3px">moomoo OpenD経由でリアルタイム価格を取得</div>
+    </div>
+    <div class="card" style="padding:16px;">
+      <div style="font-size:22px;margin-bottom:6px;">🤖</div>
+      <div style="font-size:13px;font-weight:700;color:var(--text)">多銘柄同時</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:3px">銘柄ごとに独立スレッドで並列監視</div>
+    </div>
+    <div class="card" style="padding:16px;">
+      <div style="font-size:22px;margin-bottom:6px;">🧪</div>
+      <div style="font-size:13px;font-weight:700;color:var(--text)">Paper Trading</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:3px">シミュレーション口座で本番前検証</div>
+    </div>
+  </div>
+
+  <h3>動作モード</h3>
+  <div class="card">
+    <table class="param-table" style="margin:0">
+      <thead><tr><th>モード</th><th>mock_data</th><th>paper_trading</th><th>動作内容</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="badge badge-gray">モック</span></td>
+          <td class="pdefault">true</td>
+          <td class="pdefault">—</td>
+          <td class="pdesc">OpenD不要。生成した正弦波データで動作確認</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-blue">ペーパー</span></td>
+          <td class="pdefault">false</td>
+          <td class="pdefault">true</td>
+          <td class="pdesc">リアル価格取得＋moomooシミュレーション口座で注文</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-red">本番</span></td>
+          <td class="pdefault">false</td>
+          <td class="pdefault">false</td>
+          <td class="pdesc">リアル価格取得＋実口座で注文（実資金使用）</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="setup">
+  <h2>起動手順</h2>
+  <h3>1. moomoo OpenD の起動</h3>
+  <p>OpenDはmoomoo証券のAPIゲートウェイです。ボット起動前に必ずOpenDを起動してください。</p>
+  <ol class="steps">
+    <li><strong>/Applications/moomoo_OpenD.app</strong> を起動する</li>
+    <li>moomooアカウントでログイン（SMS認証コードが必要な場合あり）</li>
+    <li>ステータスが「接続中」になるのを確認する</li>
+    <li>ポート <code>11111</code> がリスニング状態であることを確認（<code>lsof -i :11111</code>）</li>
+  </ol>
+
+  <h3>2. Web アプリの起動</h3>
+  <p>ターミナルで以下を実行するか、Claude Codeのプレビューから起動します。</p>
+  <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
+    cd /Users/onomasayuki/Claude/moomoostock-01/macd_trader<br>
+    python3 web_app.py
+  </div>
+  <p style="margin-top:8px">ブラウザで <code>http://localhost:5001</code> を開いてください。</p>
+
+  <div class="callout tip">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body"><strong>OpenDが先、ボットが後。</strong> OpenDが起動していない状態でボットを開始すると接続エラーになります。</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="dashboard">
+  <h2>画面の見方</h2>
+
+  <h3>ステータスバッジ</h3>
+  <div class="status-grid">
+    <div class="status-card">
+      <span class="badge badge-gray sc-badge">停止中</span>
+      <div><div class="sc-label">停止中</div><div class="sc-desc">ボット未起動またはエラー停止</div></div>
+    </div>
+    <div class="status-card">
+      <span class="badge badge-green sc-badge">監視中</span>
+      <div><div class="sc-label">監視中</div><div class="sc-desc">K線を取得してMACDを計算中。GC待ち状態</div></div>
+    </div>
+    <div class="status-card">
+      <span class="badge badge-blue sc-badge">GC待機</span>
+      <div><div class="sc-label">GC待機 (X.X分)</div><div class="sc-desc">ゴールデンクロス発生中。エントリー条件を満たすか評価中。括弧内はGC継続時間</div></div>
+    </div>
+    <div class="status-card">
+      <span class="badge badge-amber sc-badge">保有中</span>
+      <div><div class="sc-label">保有中 (+X.XX%)</div><div class="sc-desc">ポジション保有中。括弧内は含み損益率</div></div>
+    </div>
+  </div>
+
+  <h3>テーブル列の意味</h3>
+  <div class="param-wrap">
+  <table class="param-table">
+    <thead><tr><th>列名</th><th>内容</th></tr></thead>
+    <tbody>
+      <tr><td class="pname">現在値</td><td class="pdesc">最新K線の終値（市場閉場中は前日終値）</td></tr>
+      <tr><td class="pname">ポジション</td><td class="pdesc">保有時：エントリー価格を表示</td></tr>
+      <tr><td class="pname">含み益</td><td class="pdesc">保有中の含み損益率（%）。赤=損・緑=益</td></tr>
+      <tr><td class="pname">MACD Hist</td><td class="pdesc">現在のMACDヒストグラム値（MACD線−シグナル線）。正=強気、負=弱気</td></tr>
+      <tr><td class="pname">本日取引</td><td class="pdesc">当日に完結した売買回数</td></tr>
+      <tr><td class="pname">本日損益</td><td class="pdesc">当日の実現損益合計（USD）</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>ログエリア</h3>
+  <p>画面右下のログは <strong>全銘柄のイベントをリアルタイムで集約</strong>して表示します。1秒ごとにポーリングして新着ログのみを取得します。「クリア」ボタンで表示をリセットできます（ログファイル自体は消えません）。</p>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="symbols">
+  <h2>銘柄管理</h2>
+
+  <h3>銘柄の追加</h3>
+  <ol class="steps">
+    <li>右上の「＋ 銘柄追加」をクリック</li>
+    <li>銘柄コードをFutu形式で入力（例: <code>US.NVDA</code>、<code>HK.00700</code>）</li>
+    <li>各タブで設定値を確認・変更する</li>
+    <li>「保存」をクリック</li>
+  </ol>
+
+  <div class="callout tip">
+    <span class="callout-icon">📝</span>
+    <div class="callout-body"><strong>銘柄コードの形式：</strong> 米国株は <code>US.ティッカー</code>（例: <code>US.AAPL</code>）、香港株は <code>HK.証券コード</code>（例: <code>HK.00700</code>）で入力します。</div>
+  </div>
+
+  <h3>銘柄の編集・削除</h3>
+  <p><strong>ボット稼働中は編集・削除できません。</strong>先に「停止」ボタンでボットを止めてから操作してください。設定は <code>data/symbols.json</code> に保存されます。</p>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="botcontrol">
+  <h2>ボット操作</h2>
+  <p>各銘柄行の「▶ 起動」で個別起動、ヘッダーの「全停止」で一括停止できます。停止は非同期で、現在の処理サイクル完了後に停止します（最大5秒）。</p>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body"><strong>ポジション保有中の停止に注意。</strong> ボットを強制停止してもポジションは自動的にクローズされません。moomooアプリから手動でポジションを確認・決済してください。</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="config-basic">
+  <h2>設定値ガイド — 基本設定</h2>
+  <div class="param-wrap">
+  <table class="param-table">
+    <thead><tr><th>パラメータ</th><th>デフォルト</th><th>説明・推奨範囲</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="pname">銘柄コード<br><small>(symbol)</small></td>
+        <td class="pdefault">US.AAPL</td>
+        <td class="pdesc">
+          取引対象の銘柄コード（Futu形式）
+          <small>米国株: <code>US.NVDA</code> / 香港株: <code>HK.00700</code></small>
+        </td>
+      </tr>
+      <tr>
+        <td class="pname">市場<br><small>(market)</small></td>
+        <td class="pdefault">US</td>
+        <td class="pdesc">
+          市場区分。注文ルーティングに使用
+          <small><code>US</code> = 米国株式　<code>HK</code> = 香港株式</small>
+        </td>
+      </tr>
+      <tr>
+        <td class="pname">足種<br><small>(timeframe)</small></td>
+        <td class="pdefault">K_1M</td>
+        <td class="pdesc">
+          K線の時間軸。MACD計算の粒度を決定する最重要パラメータ
+          <small>
+            <code>K_1M</code>=1分足　<code>K_5M</code>=5分足　<code>K_15M</code>=15分足<br>
+            <span class="range">推奨: K_5M（ノイズと信頼性のバランスが最良）</span>
+          </small>
+        </td>
+      </tr>
+      <tr>
+        <td class="pname">注文種別<br><small>(order_type)</small></td>
+        <td class="pdefault">market</td>
+        <td class="pdesc">
+          注文方法
+          <small>
+            <code>market</code> = 成行注文（約定確実だが価格不確定）<br>
+            <code>limit</code> = 指値注文（価格確定だが約定しない場合あり）<br>
+            <span class="range">推奨: market（自動売買では約定確実性を優先）</span>
+          </small>
+        </td>
+      </tr>
+      <tr>
+        <td class="pname">発注株数<br><small>(quantity)</small></td>
+        <td class="pdefault">5</td>
+        <td class="pdesc">
+          1回の注文株数
+          <small>
+            総ポジション金額 = 発注株数 × 現在値<br>
+            例: NVDA @ $120 × 5株 = $600 のポジション<br>
+            <span class="range">リスク管理の観点から最大ポジション金額と合わせて設定</span>
+          </small>
+        </td>
+      </tr>
+      <tr>
+        <td class="pname">指値オフセット<br><small>(limit_offset_pct)</small></td>
+        <td class="pdefault">0.02</td>
+        <td class="pdesc">
+          指値注文時の価格オフセット率（%）。注文種別=指値のときのみ有効
+          <small>買い: 現在値 × (1 + 0.02%) 上乗せ、売り: 下乗せ</small>
+        </td>
+      </tr>
+      <tr>
+        <td class="pname">モックデータ<br><small>(mock_data)</small></td>
+        <td class="pdefault">false</td>
+        <td class="pdesc">
+          オフラインテストモード。オンにするとOpenD不要でアプリ動作を確認できる
+          <small><span class="range">本番・Paper Trading では必ずオフに設定</span></small>
+        </td>
+      </tr>
+      <tr>
+        <td class="pname">Paper Trading<br><small>(paper_trading)</small></td>
+        <td class="pdefault">オン</td>
+        <td class="pdesc">
+          オン = moomooシミュレーション口座で注文、オフ = 実口座で注文
+          <small><span class="range">初期はオンでシミュ動作を十分に確認してからオフに切り替えること</span></small>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="config-macd">
+  <h2>設定値ガイド — MACD</h2>
+  <p>MACD（Moving Average Convergence Divergence）は、2本のEMA（指数移動平均）の差からトレンドの方向と強さを測る指標です。</p>
+
+  <div class="callout tip">
+    <span class="callout-icon">📐</span>
+    <div class="callout-body">
+      <strong>計算式：</strong><br>
+      MACD線 = EMA(fast_period) − EMA(slow_period)<br>
+      シグナル線 = MACD線のEMA(signal_period)<br>
+      ヒストグラム = MACD線 − シグナル線<br><br>
+      <strong>ゴールデンクロス（GC）：</strong> MACD線がシグナル線を下から上に突き抜けた瞬間（買いシグナル）<br>
+      <strong>デッドクロス（DC）：</strong> MACD線がシグナル線を上から下に突き抜けた瞬間（売りシグナル）
+    </div>
+  </div>
+
+  <div class="param-wrap">
+  <table class="param-table">
+    <thead><tr><th>パラメータ</th><th>デフォルト</th><th>説明・推奨範囲</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="pname">短期EMA期間<br><small>(fast_period)</small></td>
+        <td class="pdefault">12</td>
+        <td class="pdesc">
+          短期EMAの期間。値が小さいほど反応が速く、ノイズが増える
+          <small>
+            1分足: 推奨 8〜12<br>
+            5分足: 推奨 12（標準）<br>
+            <span class="range">範囲: 5〜26</span>
+          </small>
+        </td>
+      </tr>
+      <tr>
+        <td class="pname">長期EMA期間<br><small>(slow_period)</small></td>
+        <td class="pdefault">26</td>
+        <td class="pdesc">
+          長期EMAの期間。短期EMA期間より必ず大きい値を設定
+          <small>
+            1分足: 推奨 21〜26<br>
+            5分足: 推奨 26（標準）<br>
+            <span class="range">範囲: 13〜52</span>
+          </small>
+        </td>
+      </tr>
+      <tr>
+        <td class="pname">シグナル期間<br><small>(signal_period)</small></td>
+        <td class="pdefault">9</td>
+        <td class="pdesc">
+          シグナル線の平滑化期間。小さいほどクロスが早く発生するがダマシが増える
+          <small>
+            ほとんどのトレーダーが標準の9を使用<br>
+            <span class="range">範囲: 5〜15</span>
+          </small>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="config-entry">
+  <h2>設定値ガイド — エントリー条件</h2>
+  <p>GCが発生してもすぐには買いません。以下の<strong>全条件を同時に満たした場合</strong>にのみエントリーします。</p>
+
+  <div class="param-wrap">
+  <table class="param-table">
+    <thead><tr><th>パラメータ</th><th>デフォルト</th><th>説明・推奨範囲</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="pname">GC継続時間<br><small>(gc_duration_minutes)</small></td>
+        <td class="pdefault">3.0</td>
+        <td class="pdesc">
+          GCが継続していなければならない最小時間（分）。フィルターとして最も重要なパラメータ
+          <small>
+            <strong>短すぎると（0〜1分）：</strong>ダマシのGCで次々とエントリーし、損失が積み上がる<br>
+            <strong>長すぎると（10分以上）：</strong>エントリーが遅れ、利幅が小さくなる<br>
+            1分足: <span class="range">推奨: 3〜5分</span><br>
+            5分足: <span class="range">推奨: 1〜2バー（5〜10分）</span>
+          </small>
+        </td>
+      </tr>
+      <tr>
+        <td class="pname">MACD Hist 最小値<br><small>(macd_histogram_min)</small></td>
+        <td class="pdefault">0.0</td>
+        <td class="pdesc">
+          エントリー時のMACDヒストグラム最小値。正の値を設定することで「GCしたがトレンドが弱い」場合を除外できる
+          <small>
+            0.0 = ヒストグラムが正であればエントリー（条件なし）<br>
+            0.002 = ある程度のモメンタムが確認できたときのみエントリー<br>
+            <span class="range">推奨: 0.0〜0.005（過剰フィルターは機会損失につながる）</span>
+          </small>
+        </td>
+      </tr>
+      <tr>
+        <td class="pname">出来高比率<br><small>(volume_surge_ratio)</small></td>
+        <td class="pdefault">1.0</td>
+        <td class="pdesc">
+          エントリー時の出来高が直近20本の平均に対して何倍以上か
+          <small>
+            1.0 = 出来高条件なし<br>
+            1.5 = 平均の1.5倍以上の出来高があるときのみエントリー<br>
+            <strong>出来高急増は価格上昇の信頼性を高める重要な確認指標</strong><br>
+            <span class="range">推奨: 1.0〜2.0</span>
+          </small>
+        </td>
+      </tr>
+      <tr>
+        <td class="pname">最大スプレッド<br><small>(max_spread_pct)</small></td>
+        <td class="pdefault">0.1</td>
+        <td class="pdesc">
+          エントリー時のスプレッド（高値−安値差）の上限（%）。スプレッドが広い = 流動性が低い = 不利な価格で約定する可能性
+          <small>
+            流動性の高い米国大型株では 0.05〜0.1% が正常範囲<br>
+            <span class="range">推奨: 0.05〜0.2%（低流動性銘柄は広げる）</span>
+          </small>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="config-exit">
+  <h2>設定値ガイド — エグジット条件</h2>
+  <p>以下のいずれかの条件を最初に満たした時点で売り注文が発行されます（複数条件の先着）。</p>
+
+  <div class="param-wrap">
+  <table class="param-table">
+    <thead><tr><th>パラメータ</th><th>デフォルト</th><th>説明・推奨範囲</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="pname">利確ライン<br><small>(take_profit_pct)</small></td>
+        <td class="pdefault">3.0</td>
+        <td class="pdesc">
+          利確ライン（エントリー価格からの上昇率%）。このラインに到達したら即座に売り
+          <small>
+            例: $100 エントリーで 3.0 設定 → $103 で利確<br>
+            <strong>理想の利確/損切比率は 2:1 以上</strong>（損切りラインの2倍以上に設定する）<br>
+            <span class="range">推奨: 損切りライン × 2〜3</span>
+          </small>
+        </td>
+      </tr>
+      <tr>
+        <td class="pname">損切りライン<br><small>(stop_loss_pct)</small></td>
+        <td class="pdefault">1.5</td>
+        <td class="pdesc">
+          損切ライン（エントリー価格からの下落率%）。最重要リスク管理パラメータ
+          <small>
+            例: $100 エントリーで 1.5 設定 → $98.5 で損切<br>
+            <strong>損切は絶対に守ること。「少し待てば戻る」という感情に負けると致命的な損失になる</strong><br>
+            1分足デイトレード: <span class="range">推奨: 0.5〜1.5%</span><br>
+            5分足スイング: <span class="range">推奨: 1.0〜2.5%</span>
+          </small>
+        </td>
+      </tr>
+      <tr>
+        <td class="pname">ピーク下落率<br><small>(peak_drop_pct)</small></td>
+        <td class="pdefault">1.5</td>
+        <td class="pdesc">
+          トレイリングストップの下落幅（%）。ポジション保有中の最高値からこの%下落したら売り
+          <small>
+            例: エントリー$100 → 最高値$103 → $103×(1-1.5%) = $101.46 で売り<br>
+            利益を確定しながら上昇トレンドを追いかける「動く損切」<br>
+            <span class="range">推奨: 損切りラインと同程度〜やや大きめ（1.0〜2.0%）</span>
+          </small>
+        </td>
+      </tr>
+      <tr>
+        <td class="pname">ピーク下落継続<br><small>(peak_drop_duration_minutes)</small></td>
+        <td class="pdefault">5.0</td>
+        <td class="pdesc">
+          トレイリングストップが有効になるまでの時間（分）。エントリー直後の一時的な下押しを無視するバッファ
+          <small>
+            0 = 即時有効（エントリー直後の揺れで即売却されやすい）<br>
+            5 = 5分後から有効（ポジションが落ち着いてからトレイリング開始）<br>
+            <span class="range">推奨: 2〜10分</span>
+          </small>
+        </td>
+      </tr>
+      <tr>
+        <td class="pname">ピーク確定本数<br><small>(peak_confirmation_bars)</small></td>
+        <td class="pdefault">3</td>
+        <td class="pdesc">
+          最高値の確定に使用するバー数。直近 N バーの最高値をピークとする
+          <small>
+            大きいほど「確実なピーク」を使うが反応が遅れる<br>
+            <span class="range">推奨: 2〜5バー</span>
+          </small>
+        </td>
+      </tr>
+      <tr>
+        <td class="pname">デッドクロスで売り<br><small>(dead_cross)</small></td>
+        <td class="pdefault">オン</td>
+        <td class="pdesc">
+          デッドクロス発生時に売り決済するか
+          <small>
+            オン = DCが確認されたら損益にかかわらず売り（推奨）<br>
+            オフ = DCを無視し、他の条件のみで売り
+          </small>
+        </td>
+      </tr>
+      <tr>
+        <td class="pname">DC継続時間<br><small>(dc_duration_minutes)</small></td>
+        <td class="pdefault">0.0</td>
+        <td class="pdesc">
+          DCがこの時間継続してから売り（GC継続時間のDC版）
+          <small>
+            0 = DC発生直後に即売り<br>
+            2 = 2分間DC継続を確認してから売り（より確実だが利益を取りこぼす可能性あり）<br>
+            <span class="range">推奨: 0〜2分</span>
+          </small>
+        </td>
+      </tr>
+      <tr>
+        <td class="pname">最大保有時間<br><small>(max_hold_minutes)</small></td>
+        <td class="pdefault">60.0</td>
+        <td class="pdesc">
+          最大保有時間（分）。この時間を超えたら損益にかかわらず強制売却
+          <small>
+            デイトレードの場合は市場閉場前に必ずポジションを閉じるための保険として機能<br>
+            1分足: <span class="range">推奨: 30〜90分</span><br>
+            5分足: <span class="range">推奨: 120〜240分</span>
+          </small>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="config-risk">
+  <h2>設定値ガイド — リスク管理</h2>
+  <p>これらのパラメータは銘柄ごとのリスクを制限します。個別の損切よりも上位の制御として機能します。</p>
+
+  <div class="param-wrap">
+  <table class="param-table">
+    <thead><tr><th>パラメータ</th><th>デフォルト</th><th>説明・推奨範囲</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="pname">日次最大取引回数<br><small>(max_daily_trades)</small></td>
+        <td class="pdefault">10</td>
+        <td class="pdesc">
+          1日あたりの最大取引回数（売買完結の回数）
+          <small>
+            過剰取引（オーバートレーディング）を防ぐための上限<br>
+            取引回数が多いほど手数料コストも増大する<br>
+            <span class="range">推奨: 5〜15回（手数料体系に応じて調整）</span>
+          </small>
+        </td>
+      </tr>
+      <tr>
+        <td class="pname">日次最大損失<br><small>(max_daily_loss_pct)</small></td>
+        <td class="pdefault">3.0</td>
+        <td class="pdesc">
+          1日の最大損失率（%）。この損失を超えると当日のエントリーが停止される
+          <small>
+            プロのデイトレーダーは「デイリードローダウン」と呼ぶ。最重要の自己保護ルール<br>
+            例: 資金$10,000 × 3% = $300 を超えたらその日は終了<br>
+            <span class="range">推奨: 2〜3%（これを超えたら取引を止めて原因を分析）</span>
+          </small>
+        </td>
+      </tr>
+      <tr>
+        <td class="pname">クールダウン<br><small>(cooldown_minutes)</small></td>
+        <td class="pdefault">5.0</td>
+        <td class="pdesc">
+          1回の売却後、次のエントリーまでの待機時間（分）
+          <small>
+            損切直後に同じ方向に飛び込む「リベンジトレード」を防ぐ<br>
+            感情的なトレードの最大の敵は「すぐに取り戻したい」という衝動<br>
+            <span class="range">推奨: 5〜15分</span>
+          </small>
+        </td>
+      </tr>
+      <tr>
+        <td class="pname">最大ポジション金額<br><small>(max_position_value)</small></td>
+        <td class="pdefault">0</td>
+        <td class="pdesc">
+          1ポジションの最大金額（USD）。0 = 制限なし
+          <small>
+            発注株数 × 価格 がこの値を超える場合はエントリーしない<br>
+            例: 0 → 5株 × $500 = $2,500 のポジションも可能<br>
+            1000 → $1,000 相当のポジションまで（株数を自動制限）<br>
+            <span class="range">推奨: 総資金の5〜10%相当の金額に設定</span>
+          </small>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="config-opend">
+  <h2>設定値ガイド — OpenD接続</h2>
+  <div class="param-wrap">
+  <table class="param-table">
+    <thead><tr><th>パラメータ</th><th>デフォルト</th><th>説明</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="pname">OpenD ホスト<br><small>(host)</small></td>
+        <td class="pdefault">127.0.0.1</td>
+        <td class="pdesc">OpenDが動作しているホストのIPアドレス。同一PC上で動作する場合は変更不要</td>
+      </tr>
+      <tr>
+        <td class="pname">OpenD ポート<br><small>(port)</small></td>
+        <td class="pdefault">11111</td>
+        <td class="pdesc">OpenDのAPIポート番号。OpenD設定ファイル（OpenD.xml）の <code>api_port</code> と一致させる</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<hr>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="pro-overview">
+  <div class="pro-header">
+    <h2>プロの立場から見た 効果的な使い方</h2>
+    <p>MACDを使ったアルゴリズム取引の実戦経験に基づく考え方と戦略</p>
+  </div>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body"><strong>これは情報提供であり、投資助言ではありません。</strong> 株式投資には元本損失のリスクがあります。実際の取引は自己責任で行ってください。</div>
+  </div>
+
+  <p>MACDは優れたトレンドフォロー指標ですが、<strong>万能ではありません。</strong> 効果的に使うには「いつMACDが機能するか」と「いつ機能しないか」を理解することが先決です。</p>
+
+  <div class="insight-block">
+    <h3>MACDが機能する相場</h3>
+    <p>方向感のある一方向トレンド、強いニュースや決算による持続的な上昇モメンタム、出来高を伴う明確なブレイクアウト局面。</p>
+  </div>
+
+  <div class="insight-block">
+    <h3>MACDが機能しない相場</h3>
+    <p>レンジ相場（横ばい）、急激な乱高下（FOMC・CPIなど主要指標発表日）、出来高が著しく少ない閑散とした時間帯（ランチタイム等）。このような局面では<strong>ボットを停止することが最良の戦略</strong>です。</p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="pro-symbols">
+  <h2>銘柄選択の基準</h2>
+
+  <div class="callout pro">
+    <span class="callout-icon">✅</span>
+    <div class="callout-body">
+      <strong>MACDデイトレードに向いている銘柄の条件：</strong><br>
+      1日の平均出来高 1,000万株以上 ／ 時価総額100億ドル以上 ／ ベータ値が高い（市場平均より値動きが大きい）
+    </div>
+  </div>
+
+  <h3>推奨銘柄タイプ（例）</h3>
+  <div class="card">
+    <table class="param-table" style="margin:0">
+      <thead><tr><th>銘柄タイプ</th><th>例</th><th>特徴</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="pdesc"><strong>ハイベータ大型株</strong></td>
+          <td class="pdefault" style="white-space:normal">NVDA, AMD, TSLA</td>
+          <td class="pdesc">値動きが大きくMACDシグナルが明確。出来高も豊富</td>
+        </tr>
+        <tr>
+          <td class="pdesc"><strong>テクノロジーETF</strong></td>
+          <td class="pdefault" style="white-space:normal">SQQQ, TQQQ, QQQ</td>
+          <td class="pdesc">市場全体のトレンドに連動。スプレッドが極めて小さい</td>
+        </tr>
+        <tr>
+          <td class="pdesc"><strong>セクターリーダー</strong></td>
+          <td class="pdefault" style="white-space:normal">AAPL, META, MSFT</td>
+          <td class="pdesc">流動性が高く安定したトレンドを形成しやすい</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout danger">
+    <span class="callout-icon">🚫</span>
+    <div class="callout-body"><strong>避けるべき銘柄：</strong> 出来高100万株未満の低流動性株、スプレッドが0.3%を超える銘柄、決算前後の株（予期できない急騰急落）、ペニー株（$5未満）</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="pro-timing">
+  <h2>取引時間帯の戦略</h2>
+  <p>米国東部時間（ET）での時間帯ごとの特性です。JST（日本時間）は夏時間で+13時間です。</p>
+
+  <div class="card">
+    <div class="time-row">
+      <div class="time-slot">9:30〜10:00<br><small style="color:var(--text3)">JST 22:30〜23:00</small></div>
+      <div class="time-body"><strong>オープニングラッシュ — 高リスク</strong><br>出来高最大で値動きが激しく、ダマシシグナルが多い。MACD自動売買は不向き。様子見推奨。</div>
+    </div>
+    <div class="time-row">
+      <div class="time-slot">10:00〜11:30<br><small style="color:var(--text3)">JST 23:00〜翌0:30</small></div>
+      <div class="time-body"><strong>最良の取引時間帯 ★</strong><br>方向性が定まりトレンドが形成されやすい。MACDシグナルの信頼性が最も高い時間帯。ボット稼働に最適。</div>
+    </div>
+    <div class="time-row">
+      <div class="time-slot">11:30〜14:00<br><small style="color:var(--text3)">JST 翌0:30〜3:00</small></div>
+      <div class="time-body"><strong>ランチタイム閑散 — 停止推奨</strong><br>出来高が激減し、小さな注文で価格が動きやすい。ランダムなノイズが多く、MACDはほぼ機能しない。</div>
+    </div>
+    <div class="time-row">
+      <div class="time-slot">14:00〜15:30<br><small style="color:var(--text3)">JST 翌3:00〜4:30</small></div>
+      <div class="time-body"><strong>アフタヌーン — 条件付きで可</strong><br>機関投資家の取引が再開し、明確なトレンドがあれば機能する。ニュースによる急変リスクあり。</div>
+    </div>
+    <div class="time-row">
+      <div class="time-slot">15:30〜16:00<br><small style="color:var(--text3)">JST 翌4:30〜5:00</small></div>
+      <div class="time-body"><strong>クロージング — 停止推奨</strong><br>大口の持高調整で不規則な値動き。新規エントリーは避け、既存ポジションはクローズ。</div>
+    </div>
+  </div>
+
+  <div class="callout tip">
+    <span class="callout-icon">⏰</span>
+    <div class="callout-body"><strong>実践的な運用：</strong> 市場オープン30分は様子見、10:00〜11:30と14:00〜15:30のみボットを稼働させ、それ以外は停止するだけで勝率が大幅に改善します。</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="pro-params">
+  <h2>パラメータ最適化の考え方</h2>
+
+  <h3>時間軸ごとの推奨パラメータ</h3>
+  <div class="param-wrap">
+  <table class="param-table">
+    <thead><tr><th>時間軸</th><th>MACD</th><th>GC継続</th><th>損切</th><th>利確</th><th>保有上限</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="pdesc"><strong>1分足</strong><br><small>スキャルピング</small></td>
+        <td class="pdefault">8-21-5</td>
+        <td class="pdefault">2〜3分</td>
+        <td class="pdefault">0.5〜1%</td>
+        <td class="pdefault">1.5〜2%</td>
+        <td class="pdefault">30〜60分</td>
+      </tr>
+      <tr>
+        <td class="pdesc"><strong>5分足</strong><br><small>デイトレード</small></td>
+        <td class="pdefault">12-26-9</td>
+        <td class="pdefault">1〜2バー</td>
+        <td class="pdefault">1〜2%</td>
+        <td class="pdefault">3〜5%</td>
+        <td class="pdefault">120〜180分</td>
+      </tr>
+      <tr>
+        <td class="pdesc"><strong>15分足</strong><br><small>スイング</small></td>
+        <td class="pdefault">12-26-9</td>
+        <td class="pdefault">1バー</td>
+        <td class="pdefault">2〜3%</td>
+        <td class="pdefault">6〜10%</td>
+        <td class="pdefault">1〜3日</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="callout warn">
+    <span class="callout-icon">🔬</span>
+    <div class="callout-body"><strong>カーブフィッティングに注意。</strong> 過去データに過度に最適化したパラメータは、相場が変わると途端に機能しなくなります。「先週最良だったパラメータ」ではなく、<strong>様々な相場環境で安定して機能するロバストなパラメータ</strong>を目指してください。</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="pro-risk">
+  <h2>リスク管理の実践</h2>
+
+  <h3>ポジションサイジングの計算式</h3>
+  <div class="card">
+    <p style="font-size:13px;color:var(--text);margin:0">
+      <strong>許容損失額</strong> = 総資金 × max_daily_loss_pct ÷ 日次最大取引回数<br><br>
+      <strong>1取引の適正株数</strong> = 許容損失額 ÷ (エントリー価格 × stop_loss_pct ÷ 100)<br><br>
+      <span style="color:var(--text2);font-size:12px">
+        例: 総資金$10,000 / 日次損失上限3% / 最大10回取引 / NVDA @$120 / 損切1.5%<br>
+        → 許容損失額 = $10,000 × 0.03 ÷ 10 = <strong>$30/回</strong><br>
+        → 適正株数 = $30 ÷ ($120 × 0.015) = <strong>16.6株 → 16株</strong>
+      </span>
+    </p>
+  </div>
+
+  <h3>「2%ルール」の徹底</h3>
+  <p>プロのトレーダーが最初に学ぶルール：<strong>1回の取引で総資金の2%以上を失わない。</strong> これを守るだけで、連続10回損切りしても総資金は80%残ります。感情ではなく数学でトレードすることが長期生存の鍵です。</p>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="pro-pitfalls">
+  <h2>よくある失敗と回避策</h2>
+
+  <div class="insight-block">
+    <h3>❌ 失敗1: 損切を動かす</h3>
+    <p>「もう少し待てば戻る」とstop_loss_pctを大きくしたり、損切をキャンセルする行為。損失は必ず事前に決めた水準で切ること。<strong>1回の大損は10回の小利益を消し飛ばします。</strong></p>
+  </div>
+
+  <div class="insight-block">
+    <h3>❌ 失敗2: 多数銘柄を同時起動する</h3>
+    <p>5銘柄以上を同時に監視すると、どのシグナルがどの相場環境で出たのかが追えなくなります。最初は<strong>1〜2銘柄に集中</strong>して動作を理解することが先決です。</p>
+  </div>
+
+  <div class="insight-block">
+    <h3>❌ 失敗3: Paper Trading を省略する</h3>
+    <p>「どうせシミュだから」と短期間でリアルへ移行するのは最悪のパターン。Paper Tradingで<strong>最低2〜4週間、50回以上の取引データ</strong>を蓄積し、勝率と期待値を確認してください。</p>
+  </div>
+
+  <div class="insight-block">
+    <h3>❌ 失敗4: レンジ相場でボットを動かし続ける</h3>
+    <p>相場が方向感なく横ばいの日は、MACDはダマシのGC/DCを連発します。前日終値と当日の値動きを見て、<strong>明らかにトレンドがない日はボットを停止する判断</strong>が重要です。</p>
+  </div>
+
+  <div class="insight-block">
+    <h3>❌ 失敗5: 1分足だけで運用する</h3>
+    <p>1分足は反応が速くシグナルが多い一方、ノイズも膨大です。手数料コストが積み上がりやすく、長期的な勝率は5分足より低くなる傾向があります。<strong>初心者には5分足から始めることを強く推奨します。</strong></p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="pro-workflow">
+  <h2>推奨ワークフロー</h2>
+  <p>プロが新しいアルゴリズム戦略を本番投入する際に踏む標準的なステップです。</p>
+
+  <ol class="steps">
+    <li><strong>モック動作確認（1日）</strong><br>mock_data=true でアプリの動作、GC/DC検出、売買ロジックを確認する</li>
+    <li><strong>Paper Trading — 1銘柄で2週間</strong><br>高流動性の1銘柄（例: US.NVDA）をK_5Mで設定し、市場時間中に2週間以上稼働させる</li>
+    <li><strong>結果の分析</strong><br>取引ログ（logs/trades_*.csv）を確認。勝率40%以上、平均利益 > 平均損失×1.5 を目標とする</li>
+    <li><strong>パラメータ調整</strong><br>負けパターンを分析（ランチタイムに集中している等）し、時間帯制限やGC継続時間を調整する</li>
+    <li><strong>リアル取引 — 最小ポジション</strong><br>paper_trading=false に切り替え、quantity=1 の最小ポジションで1週間稼働させる</li>
+    <li><strong>段階的なスケールアップ</strong><br>継続的な利益を確認しながら、1ヶ月ごとにポジションサイズを増やしていく。急拡大は禁物。</li>
+  </ol>
+
+  <div class="callout pro">
+    <span class="callout-icon">💼</span>
+    <div class="callout-body">
+      <strong>最後に：</strong> アルゴリズム取引の真の価値は、「感情を排除して規則を守り続けること」にあります。人間が感情でルールを破ってしまう場面でも、ボットは淡々とルールを実行します。しかしそのルール自体が間違っていれば、ボットは速く大きく間違い続けます。<br><br>
+      まず正しいルールを Paper Trading で証明し、それからボットに任せてください。
+    </div>
+  </div>
+</section>
+
+</main>
+</div>
+
+<script>
+// Active sidebar link
+const links = document.querySelectorAll('.sidebar a');
+const sections = document.querySelectorAll('main section');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.remove('active'));
+      const id = e.target.id;
+      const link = document.querySelector(`.sidebar a[href="#${id}"]`);
+      if (link) link.classList.add('active');
+    }
+  });
+}, { rootMargin: '-30% 0px -60% 0px' });
+sections.forEach(s => observer.observe(s));
+</script>

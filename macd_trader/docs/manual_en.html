@@ -1,0 +1,556 @@
+
+<title>MACD Trader — User Manual</title>
+<style>
+:root {
+  --bg:#f6f5f1;--surface:#ffffff;--surface2:#eeecea;--border:#dedad4;
+  --text:#1a2038;--text2:#5a637a;--text3:#8a93aa;--accent:#1a5fc0;
+  --accent-bg:#e8f0fd;--green:#147a4e;--green-bg:#e4f5ec;--red:#c0301a;
+  --red-bg:#fceae8;--amber:#96640d;--amber-bg:#fdf4e0;--navy:#0e2140;
+  --mono:'SF Mono','Fira Code','Consolas',monospace;
+}
+@media(prefers-color-scheme:dark){
+  :root{--bg:#0c1220;--surface:#131c2e;--surface2:#1a2540;--border:#253045;
+  --text:#dde4f0;--text2:#8a97b5;--text3:#58688a;--accent:#4d8fe8;
+  --accent-bg:#0e1f42;--green:#2dc47a;--green-bg:#0a2b1a;--red:#f0614a;
+  --red-bg:#2e0e0a;--amber:#e8a830;--amber-bg:#2a1e04;--navy:#dde4f0;}
+}
+:root[data-theme="light"]{--bg:#f6f5f1;--surface:#ffffff;--surface2:#eeecea;--border:#dedad4;--text:#1a2038;--text2:#5a637a;--text3:#8a93aa;--accent:#1a5fc0;--accent-bg:#e8f0fd;--green:#147a4e;--green-bg:#e4f5ec;--red:#c0301a;--red-bg:#fceae8;--amber:#96640d;--amber-bg:#fdf4e0;--navy:#0e2140;}
+:root[data-theme="dark"]{--bg:#0c1220;--surface:#131c2e;--surface2:#1a2540;--border:#253045;--text:#dde4f0;--text2:#8a97b5;--text3:#58688a;--accent:#4d8fe8;--accent-bg:#0e1f42;--green:#2dc47a;--green-bg:#0a2b1a;--red:#f0614a;--red-bg:#2e0e0a;--amber:#e8a830;--amber-bg:#2a1e04;--navy:#dde4f0;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:15px;line-height:1.7}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+.layout{display:grid;grid-template-columns:240px 1fr;min-height:100vh;max-width:1200px;margin:0 auto}
+@media(max-width:768px){.layout{grid-template-columns:1fr}.sidebar{display:none}}
+header{grid-column:1/-1;background:var(--navy);color:#fff;padding:28px 40px;display:flex;align-items:flex-end;gap:20px}
+.header-badge{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:4px;padding:3px 9px;color:rgba(255,255,255,.85);align-self:center;white-space:nowrap}
+header h1{font-size:26px;font-weight:700;letter-spacing:-.02em;line-height:1.2;color:#fff}
+header p{font-size:13px;color:rgba(255,255,255,.65);margin-top:4px}
+.header-text{flex:1}
+.sidebar{padding:28px 0 40px;position:sticky;top:0;height:100vh;overflow-y:auto;border-right:1px solid var(--border)}
+.sidebar-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);padding:16px 24px 6px}
+.sidebar a{display:block;font-size:13px;color:var(--text2);padding:5px 24px;border-left:2px solid transparent;transition:color .15s,border-color .15s}
+.sidebar a:hover,.sidebar a.active{color:var(--accent);border-left-color:var(--accent);background:var(--accent-bg);text-decoration:none}
+main{padding:40px 48px 80px;max-width:760px}
+section{margin-bottom:56px;scroll-margin-top:24px}
+h2{font-size:22px;font-weight:700;color:var(--navy);letter-spacing:-.02em;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid var(--border);text-wrap:balance}
+h3{font-size:15px;font-weight:700;color:var(--text);margin:28px 0 10px;text-wrap:balance}
+p{margin-bottom:12px;color:var(--text2)}
+p strong{color:var(--text)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px 24px;margin-bottom:12px}
+.param-table{width:100%;border-collapse:collapse;font-size:13.5px;margin:12px 0 20px}
+.param-table th{text-align:left;font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);padding:8px 12px;border-bottom:2px solid var(--border)}
+.param-table td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+.param-table tr:last-child td{border-bottom:none}
+.pname{font-family:var(--mono);font-size:12px;color:var(--accent);white-space:nowrap;width:1%}
+.pdefault{font-family:var(--mono);font-size:12px;color:var(--text3);white-space:nowrap;width:1%;font-variant-numeric:tabular-nums}
+.pdesc{color:var(--text);line-height:1.55}
+.pdesc small{display:block;margin-top:4px;color:var(--text2);font-size:12px}
+.pdesc .range{display:inline-block;margin-top:5px;font-size:11.5px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px 8px;color:var(--text3);font-family:var(--mono)}
+.param-wrap{overflow-x:auto}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px;white-space:nowrap}
+.badge-green{background:var(--green-bg);color:var(--green)}
+.badge-red{background:var(--red-bg);color:var(--red)}
+.badge-blue{background:var(--accent-bg);color:var(--accent)}
+.badge-gray{background:var(--surface2);color:var(--text2)}
+.badge-amber{background:var(--amber-bg);color:var(--amber)}
+.callout{display:flex;gap:12px;padding:14px 18px;border-radius:7px;border-left:3px solid;margin:16px 0;font-size:13.5px;line-height:1.6}
+.callout-icon{font-size:17px;flex-shrink:0;margin-top:1px}
+.callout-body{color:var(--text)}
+.callout.tip{background:var(--accent-bg);border-color:var(--accent)}
+.callout.warn{background:var(--amber-bg);border-color:var(--amber)}
+.callout.danger{background:var(--red-bg);border-color:var(--red)}
+.callout.pro{background:var(--green-bg);border-color:var(--green)}
+.steps{list-style:none;counter-reset:step}
+.steps li{counter-increment:step;display:flex;gap:14px;margin-bottom:12px;font-size:14px;color:var(--text2)}
+.steps li::before{content:counter(step);width:24px;height:24px;background:var(--accent);color:#fff;border-radius:50%;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.status-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:12px 0}
+.status-card{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:12px 14px;display:flex;align-items:flex-start;gap:10px}
+.sc-label{font-size:12px;font-weight:600;color:var(--text)}
+.sc-desc{font-size:12px;color:var(--text2);margin-top:2px}
+.pro-header{background:var(--navy);color:#fff;border-radius:10px;padding:24px 28px;margin-bottom:24px}
+.pro-header h2{color:#fff;border-bottom-color:rgba(255,255,255,.2);margin-bottom:8px}
+.pro-header p{color:rgba(255,255,255,.65);margin:0}
+.insight-block{border-left:3px solid var(--border);padding-left:18px;margin:20px 0}
+.insight-block h3{margin-top:0;font-size:14px}
+.time-row{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border);font-size:13.5px}
+.time-row:last-child{border-bottom:none}
+.time-slot{font-family:var(--mono);font-size:12px;color:var(--text3);white-space:nowrap;width:130px;flex-shrink:0;padding-top:2px}
+.time-body{color:var(--text2)}
+.time-body strong{color:var(--text)}
+hr{border:none;border-top:1px solid var(--border);margin:32px 0}
+code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:1px 5px;color:var(--accent)}
+</style>
+
+<div class="layout">
+<header>
+  <div class="header-text">
+    <h1>MACD Trader</h1>
+    <p>moomoo OpenAPI Automated Trading System — User Manual v1.0</p>
+  </div>
+  <span class="header-badge">Paper Trading Ready</span>
+</header>
+
+<nav class="sidebar">
+  <div>
+    <div class="sidebar-label">Getting Started</div>
+    <a href="#overview">Overview</a>
+    <a href="#setup">Setup</a>
+    <a href="#dashboard">Dashboard</a>
+    <a href="#symbols">Symbols</a>
+    <a href="#botcontrol">Bot Control</a>
+  </div>
+  <div>
+    <div class="sidebar-label">Configuration</div>
+    <a href="#config-basic">Basic Settings</a>
+    <a href="#config-macd">MACD</a>
+    <a href="#config-entry">Entry Conditions</a>
+    <a href="#config-exit">Exit Conditions</a>
+    <a href="#config-risk">Risk Management</a>
+    <a href="#config-opend">OpenD Connection</a>
+  </div>
+  <div>
+    <div class="sidebar-label">Pro Strategies</div>
+    <a href="#pro-overview">MACD Limitations</a>
+    <a href="#pro-symbols">Symbol Selection</a>
+    <a href="#pro-timing">Trading Hours</a>
+    <a href="#pro-params">Parameter Tuning</a>
+    <a href="#pro-risk">Risk in Practice</a>
+    <a href="#pro-pitfalls">Common Mistakes</a>
+    <a href="#pro-workflow">Recommended Workflow</a>
+  </div>
+</nav>
+
+<main>
+
+<section id="overview">
+  <h2>Overview</h2>
+  <p>MACD Trader connects to moomoo Securities via OpenAPI to detect MACD Golden Cross (GC) and Dead Cross (DC) signals and automatically trade multiple symbols simultaneously.</p>
+
+  <div class="status-grid" style="grid-template-columns:1fr 1fr 1fr;margin-top:16px">
+    <div class="card" style="padding:16px">
+      <div style="font-size:22px;margin-bottom:6px">📡</div>
+      <div style="font-size:13px;font-weight:700;color:var(--text)">Live Connection</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:3px">Real-time prices via moomoo OpenD</div>
+    </div>
+    <div class="card" style="padding:16px">
+      <div style="font-size:22px;margin-bottom:6px">🤖</div>
+      <div style="font-size:13px;font-weight:700;color:var(--text)">Multi-Symbol</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:3px">Independent threads per symbol</div>
+    </div>
+    <div class="card" style="padding:16px">
+      <div style="font-size:22px;margin-bottom:6px">🧪</div>
+      <div style="font-size:13px;font-weight:700;color:var(--text)">Paper Trading</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:3px">Validate strategy before going live</div>
+    </div>
+  </div>
+
+  <h3>Operating Modes</h3>
+  <div class="card">
+    <table class="param-table" style="margin:0">
+      <thead><tr><th>Mode</th><th>mock_data</th><th>paper_trading</th><th>Behavior</th></tr></thead>
+      <tbody>
+        <tr><td><span class="badge badge-gray">Mock</span></td><td class="pdefault">true</td><td class="pdefault">—</td><td class="pdesc">No OpenD needed. Uses generated price data for offline testing</td></tr>
+        <tr><td><span class="badge badge-blue">Paper</span></td><td class="pdefault">false</td><td class="pdefault">true</td><td class="pdesc">Real prices from OpenD, orders sent to moomoo simulate account</td></tr>
+        <tr><td><span class="badge badge-red">Live</span></td><td class="pdefault">false</td><td class="pdefault">false</td><td class="pdesc">Real prices from OpenD, orders placed in your real account</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="setup">
+  <h2>Setup</h2>
+
+  <h3>1. Install moomoo OpenD</h3>
+  <p><strong>OpenD is not included in this repository.</strong> It must be installed separately from moomoo's official site.</p>
+  <ol class="steps">
+    <li>Download OpenD from <strong>openapi.moomoo.com</strong> (GUI version recommended)</li>
+    <li>On macOS: if blocked by Gatekeeper, go to <strong>System Settings → Privacy &amp; Security → Open Anyway</strong></li>
+    <li>Launch the app and log in with your moomoo account (SMS verification may be required)</li>
+    <li>Confirm the status shows "Connected" — port <code>11111</code> will now be listening</li>
+  </ol>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body"><strong>Always start OpenD before launching bots.</strong> If OpenD is not running when a bot starts, it will fail to connect immediately. Your moomoo credentials are entered only in the OpenD app — never store them in any file in this repository.</div>
+  </div>
+
+  <h3>2. Install Python dependencies</h3>
+  <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">pip install -r requirements.txt</div>
+
+  <h3>3. Start the Web GUI</h3>
+  <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
+    cd macd_trader<br>
+    python web_app.py
+  </div>
+  <p style="margin-top:8px">Open <code>http://localhost:5001</code> in your browser.</p>
+
+  <h3>4. Configure symbols and start</h3>
+  <ol class="steps">
+    <li>Copy <code>data/symbols.example.json</code> to <code>data/symbols.json</code></li>
+    <li>Click <strong>＋ 銘柄追加</strong> (Add Symbol) in the GUI</li>
+    <li>Enter a ticker in Futu format: <code>US.NVDA</code>, <code>HK.00700</code></li>
+    <li>Keep <strong>Paper Trading</strong> checked for your first run</li>
+    <li>Click <strong>▶ 起動</strong> (Start) to begin monitoring</li>
+  </ol>
+</section>
+
+<section id="dashboard">
+  <h2>Dashboard</h2>
+
+  <h3>Status Badges</h3>
+  <div class="status-grid">
+    <div class="status-card"><span class="badge badge-gray">停止中</span><div><div class="sc-label">Stopped</div><div class="sc-desc">Bot not running or stopped due to error</div></div></div>
+    <div class="status-card"><span class="badge badge-green">監視中</span><div><div class="sc-label">Monitoring</div><div class="sc-desc">Fetching K-lines, computing MACD, waiting for GC</div></div></div>
+    <div class="status-card"><span class="badge badge-blue">GC待機</span><div><div class="sc-label">GC Hold (X.Xm)</div><div class="sc-desc">Golden Cross active. Evaluating entry conditions. Time shown is GC duration.</div></div></div>
+    <div class="status-card"><span class="badge badge-amber">保有中</span><div><div class="sc-label">In Position (+X.XX%)</div><div class="sc-desc">Position open. Percentage shows unrealized P&amp;L.</div></div></div>
+  </div>
+
+  <h3>Table Columns</h3>
+  <div class="param-wrap">
+  <table class="param-table">
+    <thead><tr><th>Column</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td class="pname">現在値</td><td class="pdesc">Latest K-line close price (last available price when market is closed)</td></tr>
+      <tr><td class="pname">ポジション</td><td class="pdesc">Entry price when a position is open</td></tr>
+      <tr><td class="pname">含み益</td><td class="pdesc">Unrealized P&amp;L %. Green = profit, Red = loss</td></tr>
+      <tr><td class="pname">MACD Hist</td><td class="pdesc">Current MACD histogram (MACD line − Signal line). Positive = bullish momentum</td></tr>
+      <tr><td class="pname">本日取引</td><td class="pdesc">Number of completed round-trip trades today</td></tr>
+      <tr><td class="pname">本日損益</td><td class="pdesc">Realized P&amp;L for the day (USD)</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>Log Panel</h3>
+  <p>The bottom-right panel aggregates logs from all running bots in real time, polled every second. Only new entries are fetched using an incremental ID. "クリア" clears the display only — log files on disk are unaffected.</p>
+</section>
+
+<section id="symbols">
+  <h2>Symbol Management</h2>
+
+  <h3>Adding a Symbol</h3>
+  <ol class="steps">
+    <li>Click <strong>＋ 銘柄追加</strong> (top right)</li>
+    <li>Enter the ticker in Futu format (US stocks: <code>US.AAPL</code> / HK stocks: <code>HK.00700</code>)</li>
+    <li>Review settings across all tabs, then click <strong>保存</strong> (Save)</li>
+  </ol>
+
+  <h3>Editing and Deleting</h3>
+  <p><strong>A running bot cannot be edited or deleted.</strong> Stop the bot first, then use the 設定 (Settings) or trash icon. Configuration is persisted to <code>data/symbols.json</code>.</p>
+</section>
+
+<section id="botcontrol">
+  <h2>Bot Control</h2>
+  <p>Use <strong>▶ 起動</strong> per symbol or <strong>全停止</strong> (Stop All) in the header. Stop requests are async — the bot finishes its current cycle (up to 5 seconds) before halting.</p>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body"><strong>Open positions are not closed automatically when a bot stops.</strong> Check and manage any open positions manually in the moomoo app.</div>
+  </div>
+</section>
+
+<section id="config-basic">
+  <h2>Configuration — Basic Settings</h2>
+  <div class="param-wrap">
+  <table class="param-table">
+    <thead><tr><th>Screen Label (key)</th><th>Default</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td class="pname">銘柄コード<br><small>(symbol)</small></td><td class="pdefault">US.AAPL</td><td class="pdesc">Ticker in Futu format<small>US stocks: <code>US.NVDA</code> / HK stocks: <code>HK.00700</code></small></td></tr>
+      <tr><td class="pname">市場<br><small>(market)</small></td><td class="pdefault">US</td><td class="pdesc">Market for order routing<small><code>US</code> = US equities &nbsp; <code>HK</code> = Hong Kong equities</small></td></tr>
+      <tr><td class="pname">足種<br><small>(timeframe)</small></td><td class="pdefault">K_1M</td><td class="pdesc">K-line interval — the most impactful parameter for signal quality<small><code>K_1M</code>=1 min &nbsp; <code>K_5M</code>=5 min &nbsp; <code>K_15M</code>=15 min<br><span class="range">Recommended: K_5M (best noise-to-reliability ratio)</span></small></td></tr>
+      <tr><td class="pname">注文種別<br><small>(order_type)</small></td><td class="pdefault">market</td><td class="pdesc">Order type<small><code>market</code> = market order (guaranteed fill, price unknown)<br><code>limit</code> = limit order (price fixed, fill not guaranteed)<br><span class="range">Recommended: market for algo trading</span></small></td></tr>
+      <tr><td class="pname">発注株数<br><small>(quantity)</small></td><td class="pdefault">5</td><td class="pdesc">Shares per order<small>Position value = quantity × price. Size together with 最大ポジション金額.</small></td></tr>
+      <tr><td class="pname">指値オフセット<br><small>(limit_offset_pct)</small></td><td class="pdefault">0.02</td><td class="pdesc">Price offset % for limit orders only<small>Buy: price × (1 + 0.02%) above ask; Sell: below bid</small></td></tr>
+      <tr><td class="pname">モックデータ<br><small>(mock_data)</small></td><td class="pdefault">off</td><td class="pdesc">Offline test mode — uses generated sine-wave prices, no OpenD required<small><span class="range">Must be OFF for Paper Trading and Live Trading</span></small></td></tr>
+      <tr><td class="pname">Paper Trading<br><small>(paper_trading)</small></td><td class="pdefault">on</td><td class="pdesc">ON = orders go to moomoo simulate account; OFF = orders go to real account<small><span class="range">Run Paper Trading for 2–4 weeks before switching OFF</span></small></td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section id="config-macd">
+  <h2>Configuration — MACD</h2>
+  <p>MACD (Moving Average Convergence Divergence) measures trend direction and momentum from two EMAs.</p>
+
+  <div class="callout tip">
+    <span class="callout-icon">📐</span>
+    <div class="callout-body">
+      <strong>Formulas:</strong><br>
+      MACD line = EMA(fast_period) − EMA(slow_period)<br>
+      Signal line = EMA(signal_period) of MACD line<br>
+      Histogram = MACD line − Signal line<br><br>
+      <strong>Golden Cross (GC):</strong> MACD line crosses Signal line upward → buy signal<br>
+      <strong>Dead Cross (DC):</strong> MACD line crosses Signal line downward → sell signal
+    </div>
+  </div>
+
+  <div class="param-wrap">
+  <table class="param-table">
+    <thead><tr><th>Screen Label (key)</th><th>Default</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td class="pname">短期EMA期間<br><small>(fast_period)</small></td><td class="pdefault">12</td><td class="pdesc">Fast EMA period. Smaller = more responsive, more noise<small>1-min chart: 8–12 &nbsp; 5-min chart: 12<br><span class="range">Range: 5–26</span></small></td></tr>
+      <tr><td class="pname">長期EMA期間<br><small>(slow_period)</small></td><td class="pdefault">26</td><td class="pdesc">Slow EMA period. Must be greater than fast_period<small>1-min chart: 21–26 &nbsp; 5-min chart: 26<br><span class="range">Range: 13–52</span></small></td></tr>
+      <tr><td class="pname">シグナル期間<br><small>(signal_period)</small></td><td class="pdefault">9</td><td class="pdesc">Signal line smoothing period. Smaller = earlier crosses, more false signals<small>9 is the near-universal standard<br><span class="range">Range: 5–15</span></small></td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section id="config-entry">
+  <h2>Configuration — Entry Conditions</h2>
+  <p>A GC alone does not trigger a buy. <strong>All of the following conditions must be met simultaneously</strong> before an order is placed.</p>
+  <div class="param-wrap">
+  <table class="param-table">
+    <thead><tr><th>Screen Label (key)</th><th>Default</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="pname">GC継続時間<br><small>(gc_duration_minutes)</small></td><td class="pdefault">3.0</td>
+        <td class="pdesc">Minimum time (minutes) GC must persist before entry. The most important filter.<small><strong>Too short (0–1 min):</strong> false GC signals → repeated losing entries<br><strong>Too long (10+ min):</strong> late entry → reduced profit potential<br>1-min chart: <span class="range">Recommended: 3–5 min</span><br>5-min chart: <span class="range">Recommended: 1–2 bars (5–10 min)</span></small></td>
+      </tr>
+      <tr>
+        <td class="pname">MACD Hist 最小値<br><small>(macd_histogram_min)</small></td><td class="pdefault">0.0</td>
+        <td class="pdesc">Minimum histogram value at entry. Filters out weak GC signals.<small>0.0 = any positive histogram (no filter)<br>0.002 = requires measurable bullish momentum<br><span class="range">Recommended: 0.0–0.005</span></small></td>
+      </tr>
+      <tr>
+        <td class="pname">出来高比率<br><small>(volume_surge_ratio)</small></td><td class="pdefault">1.0</td>
+        <td class="pdesc">Required volume as a multiple of the 20-bar average.<small>1.0 = no volume filter<br>1.5 = only enter when volume is 1.5× the recent average<br><strong>Volume surge confirms signal strength</strong><br><span class="range">Recommended: 1.0–2.0</span></small></td>
+      </tr>
+      <tr>
+        <td class="pname">最大スプレッド<br><small>(max_spread_pct)</small></td><td class="pdefault">0.1</td>
+        <td class="pdesc">Maximum allowed spread (high − low, as %) at entry time. Wide spread = low liquidity = poor fills.<small>Normal for liquid US large-cap: 0.05–0.1%<br><span class="range">Recommended: 0.05–0.2%</span></small></td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section id="config-exit">
+  <h2>Configuration — Exit Conditions</h2>
+  <p>The <strong>first</strong> condition to trigger closes the position (whichever comes first).</p>
+  <div class="param-wrap">
+  <table class="param-table">
+    <thead><tr><th>Screen Label (key)</th><th>Default</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td class="pname">利確ライン<br><small>(take_profit_pct)</small></td><td class="pdefault">3.0</td><td class="pdesc">Take profit: % gain from entry price.<small>Example: entry $100, TP=3.0 → sell at $103<br><strong>Target reward-to-risk ratio of 2:1 or better</strong><br><span class="range">Recommended: stop_loss_pct × 2–3</span></small></td></tr>
+      <tr><td class="pname">損切りライン<br><small>(stop_loss_pct)</small></td><td class="pdefault">1.5</td><td class="pdesc">Hard stop loss: % drop from entry price. The single most critical parameter.<small>Example: entry $100, SL=1.5 → sell at $98.50<br><strong>Never move or widen the stop. One large loss wipes out many small wins.</strong><br>1-min scalping: <span class="range">0.5–1.5%</span><br>5-min trading: <span class="range">1.0–2.5%</span></small></td></tr>
+      <tr><td class="pname">ピーク下落率<br><small>(peak_drop_pct)</small></td><td class="pdefault">1.5</td><td class="pdesc">Trailing stop: sell if price drops this % below the highest point since entry.<small>Example: entry $100 → peak $103 → sell at $103×(1−1.5%) = $101.46<br>Locks in profits while riding the trend<br><span class="range">Recommended: ~equal to or slightly above stop_loss_pct</span></small></td></tr>
+      <tr><td class="pname">ピーク下落継続<br><small>(peak_drop_duration_minutes)</small></td><td class="pdefault">5.0</td><td class="pdesc">Delay before the trailing stop activates (minutes). Absorbs post-entry noise.<small>0 = active immediately (may trigger on entry-candle wick)<br>5 = trailing stop arms 5 minutes after entry<br><span class="range">Recommended: 2–10 min</span></small></td></tr>
+      <tr><td class="pname">ピーク確定本数<br><small>(peak_confirmation_bars)</small></td><td class="pdefault">3</td><td class="pdesc">Number of recent bars used to identify the peak price.<small>Higher = more reliable peak, but slower reaction<br><span class="range">Recommended: 2–5 bars</span></small></td></tr>
+      <tr><td class="pname">デッドクロスで売り<br><small>(dead_cross)</small></td><td class="pdefault">on</td><td class="pdesc">Exit on Dead Cross regardless of P&amp;L.<small>ON = sell when MACD crosses below Signal (recommended)<br>OFF = ignore DC, rely on other conditions only</small></td></tr>
+      <tr><td class="pname">DC継続時間<br><small>(dc_duration_minutes)</small></td><td class="pdefault">0.0</td><td class="pdesc">Wait this many minutes after DC before selling (DC equivalent of GC duration).<small>0 = sell immediately on DC<br>2 = wait 2 min to confirm DC is sustained<br><span class="range">Recommended: 0–2 min</span></small></td></tr>
+      <tr><td class="pname">最大保有時間<br><small>(max_hold_minutes)</small></td><td class="pdefault">60.0</td><td class="pdesc">Force-close the position after this duration regardless of P&amp;L. Acts as a safety net to avoid holding overnight on a day-trading setup.<small>1-min chart: <span class="range">30–90 min</span><br>5-min chart: <span class="range">120–240 min</span></small></td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section id="config-risk">
+  <h2>Configuration — Risk Management</h2>
+  <p>These limits apply per symbol and act as an upper-level safeguard above individual stop losses.</p>
+  <div class="param-wrap">
+  <table class="param-table">
+    <thead><tr><th>Screen Label (key)</th><th>Default</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td class="pname">日次最大取引回数<br><small>(max_daily_trades)</small></td><td class="pdefault">10</td><td class="pdesc">Maximum completed round-trips per day. Prevents overtrading and commission accumulation.<br><span class="range" style="margin-top:5px;display:inline-block">Recommended: 5–15</span></td></tr>
+      <tr><td class="pname">日次最大損失<br><small>(max_daily_loss_pct)</small></td><td class="pdefault">3.0</td><td class="pdesc">Daily loss limit (%). Entry is halted for the rest of the day if exceeded. Known as "daily drawdown limit" among professionals.<small>Example: $10,000 capital × 3% = stop at −$300 for the day<br><span class="range">Recommended: 2–3% (investigate the cause if hit)</span></small></td></tr>
+      <tr><td class="pname">クールダウン<br><small>(cooldown_minutes)</small></td><td class="pdefault">5.0</td><td class="pdesc">Mandatory wait after each exit before the next entry. Prevents "revenge trading" after a loss.<br><span class="range" style="margin-top:5px;display:inline-block">Recommended: 5–15 min</span></td></tr>
+      <tr><td class="pname">最大ポジション金額<br><small>(max_position_value)</small></td><td class="pdefault">0</td><td class="pdesc">Maximum position value in USD. 0 = no limit.<small>Example: 1000 → bot skips entry if quantity × price > $1,000<br><span class="range">Recommended: 5–10% of total capital</span></small></td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section id="config-opend">
+  <h2>Configuration — OpenD Connection</h2>
+  <div class="param-wrap">
+  <table class="param-table">
+    <thead><tr><th>Screen Label (key)</th><th>Default</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td class="pname">OpenD ホスト<br><small>(host)</small></td><td class="pdefault">127.0.0.1</td><td class="pdesc">IP address of the machine running OpenD. No change needed if running on the same PC.</td></tr>
+      <tr><td class="pname">OpenD ポート<br><small>(port)</small></td><td class="pdefault">11111</td><td class="pdesc">API port for OpenD. Must match <code>api_port</code> in <code>OpenD.xml</code>.</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<hr>
+
+<section id="pro-overview">
+  <div class="pro-header">
+    <h2>Pro Strategies: Getting the Most from MACD Trading</h2>
+    <p>Practical guidance from an algorithmic trading perspective</p>
+  </div>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body"><strong>This is educational content, not financial advice.</strong> Trading carries risk of loss. All decisions are your own responsibility.</div>
+  </div>
+
+  <p>MACD is a powerful trend-following indicator, but it is not a magic formula. Using it effectively requires knowing <strong>when it works</strong> and <strong>when it doesn't</strong>.</p>
+
+  <div class="insight-block">
+    <h3>When MACD Works</h3>
+    <p>Strong directional trends, sustained momentum after news or earnings, clear breakouts with volume confirmation, trending markets with price making higher highs.</p>
+  </div>
+
+  <div class="insight-block">
+    <h3>When MACD Fails</h3>
+    <p>Sideways / range-bound markets (generates repeated false crosses), major macro events (FOMC, CPI — unpredictable spike-and-reverse behavior), low-volume hours. <strong>The best action during these conditions is to stop the bots.</strong></p>
+  </div>
+</section>
+
+<section id="pro-symbols">
+  <h2>Symbol Selection</h2>
+
+  <div class="callout pro">
+    <span class="callout-icon">✅</span>
+    <div class="callout-body"><strong>Ideal MACD day-trading candidates:</strong> Average daily volume 10M+ shares / Market cap $10B+ / High beta (moves more than the market)</div>
+  </div>
+
+  <div class="card">
+    <table class="param-table" style="margin:0">
+      <thead><tr><th>Type</th><th>Examples</th><th>Why it works</th></tr></thead>
+      <tbody>
+        <tr><td class="pdesc"><strong>High-beta mega-cap</strong></td><td class="pdefault" style="white-space:normal">NVDA, AMD, TSLA</td><td class="pdesc">Large moves, clear trends, abundant volume</td></tr>
+        <tr><td class="pdesc"><strong>Tech ETFs</strong></td><td class="pdefault" style="white-space:normal">SQQQ, TQQQ, QQQ</td><td class="pdesc">Follows market trend. Minimal spread.</td></tr>
+        <tr><td class="pdesc"><strong>Sector leaders</strong></td><td class="pdefault" style="white-space:normal">AAPL, META, MSFT</td><td class="pdesc">High liquidity, stable trend formation</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout danger">
+    <span class="callout-icon">🚫</span>
+    <div class="callout-body"><strong>Avoid:</strong> Stocks with &lt;1M daily volume, spreads &gt;0.3%, stocks near earnings (binary risk), and penny stocks (under $5)</div>
+  </div>
+</section>
+
+<section id="pro-timing">
+  <h2>Trading Hour Strategy</h2>
+  <p>All times are US Eastern Time (ET).</p>
+
+  <div class="card">
+    <div class="time-row">
+      <div class="time-slot">9:30–10:00 ET</div>
+      <div class="time-body"><strong>Opening Rush — High Risk</strong><br>Maximum volume but maximum false signals. Many institutional algorithms are still repositioning. MACD is unreliable here. <em>Watch, don't trade.</em></div>
+    </div>
+    <div class="time-row">
+      <div class="time-slot">10:00–11:30 ET</div>
+      <div class="time-body"><strong>Prime Trading Window ★</strong><br>Direction is established, trends are sustained. MACD signals have the highest reliability of the day. <em>Run bots here.</em></div>
+    </div>
+    <div class="time-row">
+      <div class="time-slot">11:30–14:00 ET</div>
+      <div class="time-body"><strong>Lunch Lull — Stop Recommended</strong><br>Volume drops sharply. Small orders move prices. MACD generates noise-driven false signals. <em>Stop bots.</em></div>
+    </div>
+    <div class="time-row">
+      <div class="time-slot">14:00–15:30 ET</div>
+      <div class="time-body"><strong>Afternoon Session — Conditional</strong><br>Institutional activity resumes. Can work if a clear trend has formed, but news-driven reversals are more common. <em>Trade with caution.</em></div>
+    </div>
+    <div class="time-row">
+      <div class="time-slot">15:30–16:00 ET</div>
+      <div class="time-body"><strong>Closing — Stop Recommended</strong><br>Erratic order flow from end-of-day hedging and rebalancing. Avoid new entries; close any open positions. <em>Stop bots.</em></div>
+    </div>
+  </div>
+
+  <div class="callout tip">
+    <span class="callout-icon">⏰</span>
+    <div class="callout-body"><strong>Simple rule:</strong> Running bots only from 10:00–11:30 ET (and possibly 14:00–15:30 ET) often improves win rate dramatically compared to running all day.</div>
+  </div>
+</section>
+
+<section id="pro-params">
+  <h2>Parameter Tuning</h2>
+
+  <h3>Recommended starting points by timeframe</h3>
+  <div class="param-wrap">
+  <table class="param-table">
+    <thead><tr><th>Timeframe</th><th>MACD</th><th>GC Duration</th><th>Stop Loss</th><th>Take Profit</th><th>Max Hold</th></tr></thead>
+    <tbody>
+      <tr><td class="pdesc"><strong>1-min</strong><br><small>Scalping</small></td><td class="pdefault">8-21-5</td><td class="pdefault">2–3 min</td><td class="pdefault">0.5–1%</td><td class="pdefault">1.5–2%</td><td class="pdefault">30–60 min</td></tr>
+      <tr><td class="pdesc"><strong>5-min</strong><br><small>Day trading</small></td><td class="pdefault">12-26-9</td><td class="pdefault">1–2 bars</td><td class="pdefault">1–2%</td><td class="pdefault">3–5%</td><td class="pdefault">2–3 hrs</td></tr>
+      <tr><td class="pdesc"><strong>15-min</strong><br><small>Swing</small></td><td class="pdefault">12-26-9</td><td class="pdefault">1 bar</td><td class="pdefault">2–3%</td><td class="pdefault">6–10%</td><td class="pdefault">1–3 days</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="callout warn">
+    <span class="callout-icon">🔬</span>
+    <div class="callout-body"><strong>Avoid curve-fitting.</strong> Parameters optimized on last week's data often fail next week. Aim for parameters that perform reasonably across different market conditions, not perfectly on one period.</div>
+  </div>
+</section>
+
+<section id="pro-risk">
+  <h2>Risk Management in Practice</h2>
+
+  <h3>Position Sizing Formula</h3>
+  <div class="card">
+    <p style="font-size:13px;color:var(--text);margin:0">
+      <strong>Risk per trade</strong> = Total capital × daily_loss_pct ÷ max_daily_trades<br><br>
+      <strong>Correct share count</strong> = Risk per trade ÷ (Entry price × stop_loss_pct ÷ 100)<br><br>
+      <span style="color:var(--text2);font-size:12px">
+        Example: $10,000 capital / 3% daily limit / 10 trades / NVDA @$120 / SL 1.5%<br>
+        → Risk per trade = $10,000 × 0.03 ÷ 10 = <strong>$30</strong><br>
+        → Share count = $30 ÷ ($120 × 0.015) = <strong>16 shares</strong>
+      </span>
+    </p>
+  </div>
+
+  <h3>The 2% Rule</h3>
+  <p>The first rule every professional trader learns: <strong>never risk more than 2% of total capital on a single trade.</strong> If you lose 10 trades in a row with this rule, 80% of your capital survives. Trade with math, not emotion.</p>
+</section>
+
+<section id="pro-pitfalls">
+  <h2>Common Mistakes</h2>
+
+  <div class="insight-block">
+    <h3>❌ Moving the stop loss</h3>
+    <p>"It'll bounce back" is the most dangerous thought in trading. Widening the stop after entry turns small, manageable losses into account-threatening ones. <strong>Set the stop before entry and never touch it.</strong></p>
+  </div>
+  <div class="insight-block">
+    <h3>❌ Running too many symbols at once</h3>
+    <p>Monitoring 5+ symbols makes it impossible to understand which signals fire in which conditions. <strong>Start with 1–2 symbols</strong> and build intuition before scaling up.</p>
+  </div>
+  <div class="insight-block">
+    <h3>❌ Skipping Paper Trading</h3>
+    <p>Switching to live after a few days of paper trading is a common and costly mistake. <strong>Accumulate at least 50 trades and 2–4 weeks of data</strong> before trading real money. Look for win rate &gt;40% and average win &gt; average loss × 1.5.</p>
+  </div>
+  <div class="insight-block">
+    <h3>❌ Running bots in choppy markets</h3>
+    <p>When the market has no direction (e.g. a sideways day), MACD fires repeated false GC/DC signals. <strong>Check pre-market direction and news before enabling bots each morning.</strong></p>
+  </div>
+  <div class="insight-block">
+    <h3>❌ Over-relying on 1-minute charts</h3>
+    <p>1-min charts generate many signals but also enormous noise. Commission costs accumulate quickly. <strong>For most users, 5-min charts produce more reliable signals with fewer trades.</strong></p>
+  </div>
+</section>
+
+<section id="pro-workflow">
+  <h2>Recommended Workflow</h2>
+  <p>The standard process for validating a new algorithmic strategy before committing real capital.</p>
+  <ol class="steps">
+    <li><strong>Mock validation (1 day)</strong><br>Enable mock_data=true. Confirm GC/DC detection, entry, exit, and logging work correctly.</li>
+    <li><strong>Paper Trading — 1 symbol, 2 weeks</strong><br>Set mock_data=false, paper_trading=true. Run on one liquid symbol (e.g. US.NVDA) at K_5M during market hours.</li>
+    <li><strong>Analyze the trade log</strong><br>Review <code>logs/trades_*.csv</code>. Target: win rate &gt;40%, avg win &gt; avg loss × 1.5.</li>
+    <li><strong>Adjust parameters</strong><br>Find patterns in losing trades (e.g. all during lunch hours). Tighten the GC duration or add a time-of-day restriction.</li>
+    <li><strong>Go live — minimum size</strong><br>Set paper_trading=false with quantity=1. Run for one week to confirm real fills match paper results.</li>
+    <li><strong>Scale gradually</strong><br>Increase position size monthly as confidence grows. Never scale faster than your verified edge justifies.</li>
+  </ol>
+
+  <div class="callout pro">
+    <span class="callout-icon">💼</span>
+    <div class="callout-body">
+      <strong>Final thought:</strong> The true value of algorithmic trading is <em>consistent rule execution without emotion</em>. A bot will follow your rules precisely when a human would second-guess them. But if the rules themselves are wrong, the bot executes those mistakes faster and at larger scale.<br><br>
+      Prove the rules work in Paper Trading. Then let the bot run them.
+    </div>
+  </div>
+</section>
+
+</main>
+</div>
+
+<script>
+const links=document.querySelectorAll('.sidebar a');
+const sections=document.querySelectorAll('main section');
+const obs=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting){links.forEach(l=>l.classList.remove('active'));const id=e.target.id;const l=document.querySelector(`.sidebar a[href="#${id}"]`);if(l)l.classList.add('active')}})},{rootMargin:'-30% 0px -60% 0px'});
+sections.forEach(s=>obs.observe(s));
+</script>

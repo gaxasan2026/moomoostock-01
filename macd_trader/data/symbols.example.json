@@ -1,0 +1,53 @@
+{
+  "symbols": {
+    "US.NVDA": {
+      "symbol": "US.NVDA",
+      "market": "US",
+      "macd": {
+        "fast_period": 12,
+        "slow_period": 26,
+        "signal_period": 9,
+        "timeframe": "K_5M"
+      },
+      "entry": {
+        "gc_duration_minutes": 3,
+        "macd_histogram_min": 0.0,
+        "volume_surge_ratio": 1.0,
+        "max_spread_pct": 0.1
+      },
+      "exit": {
+        "peak_drop_pct": 1.5,
+        "peak_drop_duration_minutes": 5.0,
+        "peak_confirmation_bars": 3,
+        "dead_cross": true,
+        "dc_duration_minutes": 0.0,
+        "take_profit_pct": 3.0,
+        "stop_loss_pct": 1.5,
+        "max_hold_minutes": 60.0
+      },
+      "order": {
+        "quantity": 5,
+        "order_type": "market",
+        "limit_offset_pct": 0.02,
+        "paper_trading": true,
+        "mock_data": false
+      },
+      "risk": {
+        "max_daily_trades": 10,
+        "max_daily_loss_pct": 3.0,
+        "cooldown_minutes": 5.0,
+        "max_position_value": 0
+      },
+      "logging": {
+        "level": "INFO",
+        "save_trade_log": true,
+        "show_realtime_price": true,
+        "trade_log_path": "logs/trades_US_NVDA.csv"
+      },
+      "opend": {
+        "host": "127.0.0.1",
+        "port": 11111
+      }
+    }
+  }
+}

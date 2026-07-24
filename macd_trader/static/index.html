@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MACD Trader</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0d1117;color:#e6edf3;font-size:13px;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+a{color:#58a6ff}
+
+/* Header */
+#header{background:#161b22;border-bottom:1px solid #30363d;padding:0 16px;height:48px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+#header h1{font-size:15px;font-weight:600;color:#e6edf3}
+#conn-dot{width:8px;height:8px;border-radius:50%;background:#3fb950;display:inline-block}
+#clock{color:#7d8590;font-size:12px;margin-left:auto}
+.hbtn{padding:5px 12px;border-radius:6px;border:1px solid #30363d;background:transparent;color:#e6edf3;cursor:pointer;font-size:12px}
+.hbtn:hover{background:#21262d}
+.hbtn.danger{border-color:#f85149;color:#f85149}
+.hbtn.danger:hover{background:#3d0f0f}
+
+/* Main layout */
+#main{display:flex;flex-direction:column;flex:1;overflow:hidden;padding:12px;gap:12px}
+
+/* Symbol panel */
+#symbol-panel{background:#161b22;border:1px solid #30363d;border-radius:8px;flex-shrink:0}
+#symbol-panel-header{display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid #30363d;gap:8px}
+#symbol-panel-header h2{font-size:13px;font-weight:600;flex:1}
+.add-btn{padding:4px 12px;background:#238636;border:1px solid #2ea043;color:#fff;border-radius:6px;cursor:pointer;font-size:12px}
+.add-btn:hover{background:#2ea043}
+
+/* Table */
+table{width:100%;border-collapse:collapse}
+th{padding:8px 12px;text-align:left;color:#7d8590;font-weight:500;border-bottom:1px solid #21262d;white-space:nowrap}
+td{padding:8px 12px;border-bottom:1px solid #21262d;white-space:nowrap;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+.num{text-align:right;font-family:monospace}
+.pos-gain{color:#3fb950}
+.pos-loss{color:#f85149}
+.pos-flat{color:#7d8590}
+
+/* Status badges */
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500}
+.badge-run{background:#0d2f19;color:#3fb950;border:1px solid #1a5e31}
+.badge-wait{background:#1a2f0f;color:#7ee787;border:1px solid #2e6020}
+.badge-hold{background:#0d2419;color:#58e67a;border:1px solid #1a5e40}
+.badge-stop{background:#1c2128;color:#7d8590;border:1px solid #30363d}
+.badge-gc{background:#071f47;color:#58a6ff;border:1px solid #1158c7}
+
+/* Action buttons */
+.act{display:flex;gap:4px}
+.btn{padding:3px 8px;border-radius:4px;border:1px solid #30363d;background:transparent;cursor:pointer;font-size:11px;color:#e6edf3}
+.btn:hover{background:#21262d}
+.btn-start{color:#3fb950;border-color:#1a5e31}
+.btn-start:hover{background:#0d2f19}
+.btn-stop{color:#f85149;border-color:#5c1d1d}
+.btn-stop:hover{background:#3d0f0f}
+.btn-edit{color:#58a6ff;border-color:#0c3269}
+.btn-edit:hover{background:#071f47}
+.btn-del{color:#7d8590;border-color:#30363d}
+.btn-del:hover{color:#f85149;border-color:#5c1d1d;background:#3d0f0f}
+.btn:disabled{opacity:0.4;cursor:not-allowed}
+
+/* Bottom panel */
+#bottom{display:flex;flex:1;gap:12px;min-height:0}
+.panel{background:#161b22;border:1px solid #30363d;border-radius:8px;display:flex;flex-direction:column;flex:1;min-height:0}
+.panel-header{display:flex;align-items:center;padding:8px 14px;border-bottom:1px solid #30363d;flex-shrink:0}
+.tab-btn{padding:4px 12px;border:none;background:transparent;color:#7d8590;cursor:pointer;font-size:12px;border-bottom:2px solid transparent}
+.tab-btn.active{color:#e6edf3;border-bottom-color:#58a6ff}
+.panel-content{overflow-y:auto;flex:1;padding:8px 0}
+
+/* Log */
+#log-panel{width:420px;flex-shrink:0}
+#log-box{font-family:"SFMono-Regular",Consolas,monospace;font-size:11px;line-height:1.6;overflow-y:auto;flex:1;padding:6px 12px}
+.log-line{display:flex;gap:8px;padding:1px 0}
+.log-time{color:#484f58;min-width:56px}
+.log-sym{min-width:56px;color:#7d8590}
+.log-INFO{color:#c9d1d9}
+.log-WARNING{color:#d29922}
+.log-ERROR{color:#f85149}
+.log-DEBUG{color:#484f58}
+
+/* Trades */
+#trades-panel{flex:1}
+
+/* Modal */
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:100}
+#overlay.hidden{display:none}
+#modal{background:#161b22;border:1px solid #30363d;border-radius:10px;width:600px;max-height:90vh;display:flex;flex-direction:column}
+#modal-head{display:flex;align-items:center;padding:14px 18px;border-bottom:1px solid #30363d}
+#modal-head h2{font-size:14px;font-weight:600;flex:1}
+#modal-close{background:none;border:none;color:#7d8590;font-size:18px;cursor:pointer;line-height:1}
+#modal-close:hover{color:#e6edf3}
+#modal-tabs{display:flex;border-bottom:1px solid #30363d;padding:0 18px}
+.mtab{padding:8px 14px;border:none;background:transparent;color:#7d8590;cursor:pointer;font-size:12px;border-bottom:2px solid transparent}
+.mtab.active{color:#e6edf3;border-bottom-color:#58a6ff}
+#modal-body{overflow-y:auto;padding:16px 18px;flex:1}
+.tab-section{display:none}
+.tab-section.active{display:block}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-group.full{grid-column:1/-1}
+label{font-size:11px;color:#7d8590}
+input[type=text],input[type=number],select{background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#e6edf3;padding:6px 10px;font-size:13px;width:100%}
+input[type=text]:focus,input[type=number]:focus,select:focus{outline:none;border-color:#58a6ff}
+.toggle-row{display:flex;align-items:center;gap:8px;padding:6px 0}
+.hint{font-size:10px;color:#484f58;margin-top:2px}
+input[type=checkbox]{width:16px;height:16px;accent-color:#58a6ff}
+#modal-foot{display:flex;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid #30363d}
+.modal-btn{padding:6px 16px;border-radius:6px;font-size:13px;cursor:pointer}
+.modal-cancel{background:transparent;border:1px solid #30363d;color:#e6edf3}
+.modal-cancel:hover{background:#21262d}
+.modal-save{background:#238636;border:1px solid #2ea043;color:#fff}
+.modal-save:hover{background:#2ea043}
+
+/* Empty state */
+.empty{padding:32px;text-align:center;color:#484f58}
+
+/* Toast */
+#toast{position:fixed;bottom:20px;right:20px;background:#21262d;border:1px solid #30363d;border-radius:8px;padding:10px 16px;font-size:12px;z-index:200;transition:opacity .3s}
+#toast.hidden{opacity:0;pointer-events:none}
+#toast.err{border-color:#5c1d1d;color:#f85149}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1>MACD Trader</h1>
+  <span id="conn-dot"></span>
+  <span id="clock"></span>
+  <button class="hbtn danger" onclick="stopAll()">全停止</button>
+</div>
+
+<div id="main">
+  <!-- Symbol Table -->
+  <div id="symbol-panel">
+    <div id="symbol-panel-header">
+      <h2>監視銘柄</h2>
+      <button class="add-btn" onclick="openModal()">＋ 銘柄追加</button>
+    </div>
+    <table id="sym-table">
+      <thead>
+        <tr>
+          <th>銘柄</th><th>状態</th><th>現在値</th><th>ポジション</th>
+          <th>含み益</th><th>MACD Hist</th><th>本日取引</th><th>本日損益</th><th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="sym-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- Bottom: Trades + Logs -->
+  <div id="bottom">
+    <div class="panel" id="trades-panel">
+      <div class="panel-header">
+        <button class="tab-btn active">取引履歴</button>
+      </div>
+      <div class="panel-content" id="trades-content">
+        <table style="width:100%">
+          <thead>
+            <tr>
+              <th>時刻</th><th>銘柄</th><th>売買</th><th>価格</th>
+              <th>株数</th><th>エントリー</th><th>損益(USD)</th><th>損益(%)</th>
+              <th>保有(分)</th><th>理由</th>
+            </tr>
+          </thead>
+          <tbody id="trades-tbody"></tbody>
+        </table>
+        <div id="trades-empty" class="empty">取引履歴はありません</div>
+      </div>
+    </div>
+
+    <div class="panel" id="log-panel">
+      <div class="panel-header" style="justify-content:space-between">
+        <span style="font-size:12px;font-weight:600">ログ</span>
+        <button class="btn" onclick="clearLogs()" style="font-size:11px">クリア</button>
+      </div>
+      <div id="log-box"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Config Modal -->
+<div id="overlay" class="hidden" onclick="if(event.target===this)closeModal()">
+  <div id="modal">
+    <div id="modal-head">
+      <h2 id="modal-title">銘柄設定</h2>
+      <button id="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modal-tabs">
+      <button class="mtab active" onclick="switchTab('basic')">基本設定</button>
+      <button class="mtab" onclick="switchTab('macd')">MACD</button>
+      <button class="mtab" onclick="switchTab('entry')">エントリー</button>
+      <button class="mtab" onclick="switchTab('exit')">エグジット</button>
+      <button class="mtab" onclick="switchTab('risk')">リスク</button>
+    </div>
+    <div id="modal-body">
+      <!-- 基本設定 -->
+      <div class="tab-section active" id="sec-basic">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>銘柄コード</label>
+            <input type="text" id="f-symbol" placeholder="US.AAPL" style="text-transform:uppercase">
+            <span class="hint">moomoo形式: US.TICKER / HK.00700</span>
+          </div>
+          <div class="form-group">
+            <label>市場</label>
+            <select id="f-market"><option value="US">US（米国株）</option><option value="HK">HK（香港株）</option></select>
+          </div>
+          <div class="form-group">
+            <label>足種 (Timeframe)</label>
+            <select id="f-timeframe">
+              <option value="K_1M">1分足</option><option value="K_5M">5分足</option>
+              <option value="K_15M">15分足</option><option value="K_30M">30分足</option>
+              <option value="K_60M">60分足</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>注文種別</label>
+            <select id="f-order-type"><option value="market">成行</option><option value="limit">指値</option></select>
+          </div>
+          <div class="form-group">
+            <label>発注株数</label>
+            <input type="number" id="f-qty" value="5" min="1">
+          </div>
+          <div class="form-group">
+            <label>指値オフセット (%)</label>
+            <input type="number" id="f-limit-offset" value="0.02" step="0.01">
+            <span class="hint">指値選択時のみ有効</span>
+          </div>
+          <div class="form-group full">
+            <div class="toggle-row">
+              <input type="checkbox" id="f-mock-data">
+              <label for="f-mock-data" style="font-size:13px;color:#e6edf3">モックデータ（オフライン・OpenD不要）</label>
+            </div>
+            <span class="hint">チェック時は生成データで動作。OpenD接続テスト時はチェックを外してください</span>
+          </div>
+          <div class="form-group full">
+            <div class="toggle-row">
+              <input type="checkbox" id="f-paper" checked>
+              <label for="f-paper" style="font-size:13px;color:#e6edf3">Paper Trading（moomooシミュ注文）</label>
+            </div>
+            <span class="hint">チェック時はOpenDに接続しリアル価格を取得、注文はmoomooシミュ口座へ。本番取引はチェックを外す</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- MACD -->
+      <div class="tab-section" id="sec-macd">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>短期EMA期間</label>
+            <input type="number" id="f-fast" value="12" min="2">
+          </div>
+          <div class="form-group">
+            <label>長期EMA期間</label>
+            <input type="number" id="f-slow" value="26" min="5">
+          </div>
+          <div class="form-group">
+            <label>シグナル期間</label>
+            <input type="number" id="f-signal" value="9" min="2">
+          </div>
+        </div>
+      </div>
+
+      <!-- エントリー -->
+      <div class="tab-section" id="sec-entry">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>GC継続時間 (分)</label>
+            <input type="number" id="f-gc-dur" value="3.0" step="0.5" min="0">
+            <span class="hint">GCが何分続いたら買い</span>
+          </div>
+          <div class="form-group">
+            <label>MACD Hist 最小値</label>
+            <input type="number" id="f-hist-min" value="0.0" step="0.001">
+            <span class="hint">0 で無効（全GCを対象）</span>
+          </div>
+          <div class="form-group">
+            <label>出来高比率</label>
+            <input type="number" id="f-vol-ratio" value="1.0" step="0.1" min="1">
+            <span class="hint">1.0 で無効</span>
+          </div>
+          <div class="form-group">
+            <label>最大スプレッド (%)</label>
+            <input type="number" id="f-spread" value="0.1" step="0.01" min="0">
+            <span class="hint">0 で無効</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- エグジット -->
+      <div class="tab-section" id="sec-exit">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>ピーク下落率 (%)</label>
+            <input type="number" id="f-peak-drop" value="1.5" step="0.1" min="0">
+            <span class="hint">0 で無効</span>
+          </div>
+          <div class="form-group">
+            <label>ピーク下落継続 (分)</label>
+            <input type="number" id="f-peak-dur" value="5.0" step="0.5" min="0">
+            <span class="hint">0 で無効</span>
+          </div>
+          <div class="form-group">
+            <label>ピーク確定本数</label>
+            <input type="number" id="f-peak-bars" value="3" min="1">
+          </div>
+          <div class="form-group">
+            <label>DC継続時間 (分)</label>
+            <input type="number" id="f-dc-dur" value="0.0" step="0.5" min="0">
+            <span class="hint">0 でDC発生直後に即売り</span>
+          </div>
+          <div class="form-group">
+            <label>利確ライン (%)</label>
+            <input type="number" id="f-tp" value="3.0" step="0.1" min="0">
+            <span class="hint">0 で無効</span>
+          </div>
+          <div class="form-group">
+            <label>損切りライン (%)</label>
+            <input type="number" id="f-sl" value="1.5" step="0.1" min="0">
+            <span class="hint">0 で無効</span>
+          </div>
+          <div class="form-group">
+            <label>最大保有時間 (分)</label>
+            <input type="number" id="f-max-hold" value="60.0" step="5" min="0">
+            <span class="hint">0 で無効</span>
+          </div>
+          <div class="form-group full">
+            <div class="toggle-row">
+              <input type="checkbox" id="f-dc" checked>
+              <label for="f-dc" style="font-size:13px;color:#e6edf3">デッドクロスで売り</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- リスク -->
+      <div class="tab-section" id="sec-risk">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>日次最大取引回数</label>
+            <input type="number" id="f-max-trades" value="10" min="0">
+            <span class="hint">0 で無制限</span>
+          </div>
+          <div class="form-group">
+            <label>日次最大損失 (%)</label>
+            <input type="number" id="f-max-loss" value="3.0" step="0.1" min="0">
+            <span class="hint">0 で無効</span>
+          </div>
+          <div class="form-group">
+            <label>クールダウン (分)</label>
+            <input type="number" id="f-cooldown" value="5.0" step="0.5" min="0">
+          </div>
+          <div class="form-group">
+            <label>最大ポジション金額 (USD)</label>
+            <input type="number" id="f-max-pos" value="0" step="100" min="0">
+            <span class="hint">0 で無制限</span>
+          </div>
+          <div class="form-group">
+            <label>OpenD ホスト</label>
+            <input type="text" id="f-opend-host" value="127.0.0.1">
+          </div>
+          <div class="form-group">
+            <label>OpenD ポート</label>
+            <input type="number" id="f-opend-port" value="11111">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="modal-foot">
+      <button class="modal-btn modal-cancel" onclick="closeModal()">キャンセル</button>
+      <button class="modal-btn modal-save" onclick="saveSymbol()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="hidden"></div>
+
+<script>
+let symbols = [];
+let statuses = {};
+let lastLogId = 0;
+let editingSymbol = null;
+
+// ─── Init ───────────────────────────────────────────────────────
+async function init() {
+  updateClock();
+  setInterval(updateClock, 1000);
+  await loadSymbols();
+  setInterval(pollStatus, 2000);
+  setInterval(pollTrades, 3000);
+  setInterval(pollLogs, 1000);
+  pollTrades();
+  pollLogs();
+}
+
+function updateClock() {
+  const n = new Date();
+  document.getElementById('clock').textContent =
+    n.toLocaleDateString('ja-JP') + ' ' + n.toTimeString().slice(0,8);
+}
+
+// ─── Symbols ────────────────────────────────────────────────────
+async function loadSymbols() {
+  const r = await fetch('/api/symbols');
+  symbols = await r.json();
+  renderSymbols();
+}
+
+function renderSymbols() {
+  const tbody = document.getElementById('sym-tbody');
+  if (symbols.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" class="empty">銘柄が登録されていません。「銘柄追加」から追加してください。</td></tr>';
+    return;
+  }
+  tbody.innerHTML = symbols.map(s => {
+    const st = statuses[s.symbol] || {};
+    const running = st.running || false;
+    const price = st.current_price ? `$${st.current_price.toFixed(4)}` : '—';
+    const entryStr = st.has_position ? `$${st.entry_price.toFixed(4)}` : '—';
+    const gainPct = st.has_position ? st.gain_pct : null;
+    const gainClass = gainPct === null ? 'pos-flat' : (gainPct >= 0 ? 'pos-gain' : 'pos-loss');
+    const gainStr = gainPct === null ? '—' : `${gainPct >= 0 ? '+' : ''}${gainPct.toFixed(2)}%`;
+    const hist = st.macd_hist !== undefined ? st.macd_hist.toFixed(4) : '—';
+    const histClass = (st.macd_hist || 0) >= 0 ? 'pos-gain' : 'pos-loss';
+    const dailyPnl = st.daily_pnl !== undefined ? st.daily_pnl : 0;
+    const pnlClass = dailyPnl >= 0 ? 'pos-gain' : 'pos-loss';
+
+    let badgeHtml = '';
+    if (!running) {
+      badgeHtml = '<span class="badge badge-stop">停止中</span>';
+    } else {
+      const status = st.status || '監視中';
+      if (status.includes('保有中')) badgeHtml = `<span class="badge badge-hold">${status}</span>`;
+      else if (status.includes('GC')) badgeHtml = `<span class="badge badge-gc">${status}</span>`;
+      else badgeHtml = `<span class="badge badge-run">${status}</span>`;
+    }
+
+    return `<tr>
+      <td><strong>${s.symbol}</strong><br><span style="color:#7d8590;font-size:11px">${s.market} · ${s.macd.timeframe} · ${s.order.mock_data ? 'モック' : s.order.paper_trading ? 'Paper' : '本番'}</span></td>
+      <td>${badgeHtml}</td>
+      <td class="num">${price}</td>
+      <td class="num">${entryStr}</td>
+      <td class="num ${gainClass}">${gainStr}</td>
+      <td class="num ${histClass}">${hist}</td>
+      <td class="num">${st.daily_trades !== undefined ? st.daily_trades + '回' : '—'}</td>
+      <td class="num ${pnlClass}">${dailyPnl !== 0 ? (dailyPnl >= 0 ? '+' : '') + dailyPnl.toFixed(2) + ' USD' : '—'}</td>
+      <td>
+        <div class="act">
+          ${running
+            ? `<button class="btn btn-stop" onclick="stopBot('${s.symbol}')">■ 停止</button>`
+            : `<button class="btn btn-start" onclick="startBot('${s.symbol}')">▶ 起動</button>`}
+          <button class="btn btn-edit" onclick="openModal('${s.symbol}')" ${running ? 'title="停止中のみ編集可"' : ''}>⚙ 設定</button>
+          <button class="btn btn-del" onclick="deleteSymbol('${s.symbol}')" ${running ? 'disabled title="停止してから削除"' : ''}>🗑</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── Bot Control ────────────────────────────────────────────────
+async function startBot(sid) {
+  const r = await fetch(`/api/bots/${encodeURIComponent(sid)}/start`, {method:'POST'});
+  const d = await r.json();
+  if (!r.ok) return showToast(d.error, true);
+  showToast(`${sid} 起動しました`);
+  setTimeout(pollStatus, 500);
+}
+
+async function stopBot(sid) {
+  const r = await fetch(`/api/bots/${encodeURIComponent(sid)}/stop`, {method:'POST'});
+  const d = await r.json();
+  if (!r.ok) return showToast(d.error, true);
+  showToast(`${sid} 停止を要求しました`);
+}
+
+async function stopAll() {
+  if (!confirm('実行中の全ボットを停止しますか？')) return;
+  await fetch('/api/bots/stop_all', {method:'POST'});
+  showToast('全ボットに停止を要求しました');
+}
+
+// ─── Polling ────────────────────────────────────────────────────
+async function pollStatus() {
+  try {
+    const r = await fetch('/api/status');
+    statuses = await r.json();
+    renderSymbols();
+  } catch(e) {
+    document.getElementById('conn-dot').style.background = '#f85149';
+  }
+}
+
+async function pollTrades() {
+  try {
+    const r = await fetch('/api/trades');
+    const trades = await r.json();
+    renderTrades(trades);
+  } catch(e) {}
+}
+
+async function pollLogs() {
+  try {
+    const r = await fetch(`/api/logs?since=${lastLogId}`);
+    const logs = await r.json();
+    for (const item of logs) {
+      appendLog(item);
+      lastLogId = Math.max(lastLogId, (item.id || 0) + 1);
+    }
+  } catch(e) {}
+}
+
+// ─── Render Trades ──────────────────────────────────────────────
+function renderTrades(trades) {
+  const tbody = document.getElementById('trades-tbody');
+  const empty = document.getElementById('trades-empty');
+  if (!trades.length) { empty.style.display=''; tbody.innerHTML=''; return; }
+  empty.style.display='none';
+  tbody.innerHTML = trades.map(t => {
+    const isBuy = t.action === 'BUY';
+    const pnlStr = t.pnl_usd !== null && t.pnl_usd !== undefined
+      ? `<span class="${t.pnl_usd >= 0 ? 'pos-gain' : 'pos-loss'}">${t.pnl_usd >= 0 ? '+' : ''}${t.pnl_usd.toFixed(2)}</span>`
+      : '—';
+    const pctStr = t.pnl_pct !== null && t.pnl_pct !== undefined
+      ? `<span class="${t.pnl_pct >= 0 ? 'pos-gain' : 'pos-loss'}">${t.pnl_pct >= 0 ? '+' : ''}${t.pnl_pct.toFixed(2)}%</span>`
+      : '—';
+    return `<tr>
+      <td>${t.timestamp}</td>
+      <td><strong>${t.symbol}</strong></td>
+      <td><span style="color:${isBuy ? '#3fb950' : '#f85149'};font-weight:600">${t.action}</span></td>
+      <td class="num">$${t.price.toFixed(4)}</td>
+      <td class="num">${t.quantity}</td>
+      <td class="num">${isBuy ? '—' : '$' + t.entry_price.toFixed(4)}</td>
+      <td class="num">${pnlStr}</td>
+      <td class="num">${pctStr}</td>
+      <td class="num">${t.hold_minutes > 0 ? t.hold_minutes + '分' : '—'}</td>
+      <td style="color:#7d8590;max-width:140px;overflow:hidden;text-overflow:ellipsis">${t.exit_reason || '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── Log ────────────────────────────────────────────────────────
+function appendLog(item) {
+  if (!item.message) return;
+  const box = document.getElementById('log-box');
+  const div = document.createElement('div');
+  div.className = 'log-line';
+  div.innerHTML = `<span class="log-time">${item.time || ''}</span>` +
+    `<span class="log-sym">${(item.symbol || '').replace('US.','').replace('HK.','')}</span>` +
+    `<span class="log-${item.level || 'INFO'}">${escHtml(item.message)}</span>`;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+  // Keep max 500 lines
+  while (box.children.length > 500) box.removeChild(box.firstChild);
+}
+
+function clearLogs() {
+  document.getElementById('log-box').innerHTML = '';
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ─── Modal ──────────────────────────────────────────────────────
+function openModal(symbolId) {
+  editingSymbol = symbolId || null;
+  document.getElementById('modal-title').textContent = symbolId ? `${symbolId} の設定` : '銘柄を追加';
+  document.getElementById('f-symbol').readOnly = !!symbolId;
+  document.getElementById('f-symbol').style.opacity = symbolId ? '.5' : '1';
+  switchTab('basic');
+
+  if (symbolId) {
+    const cfg = symbols.find(s => s.symbol === symbolId);
+    if (cfg) fillForm(cfg);
+  } else {
+    resetForm();
+  }
+  document.getElementById('overlay').classList.remove('hidden');
+}
+
+function closeModal() {
+  document.getElementById('overlay').classList.add('hidden');
+  editingSymbol = null;
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-section').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.mtab').forEach(el => el.classList.remove('active'));
+  document.getElementById(`sec-${name}`).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function resetForm() {
+  document.getElementById('f-symbol').value = '';
+  document.getElementById('f-market').value = 'US';
+  document.getElementById('f-timeframe').value = 'K_1M';
+  document.getElementById('f-order-type').value = 'market';
+  document.getElementById('f-qty').value = '5';
+  document.getElementById('f-limit-offset').value = '0.02';
+  document.getElementById('f-mock-data').checked = false;
+  document.getElementById('f-paper').checked = true;
+  document.getElementById('f-fast').value = '12';
+  document.getElementById('f-slow').value = '26';
+  document.getElementById('f-signal').value = '9';
+  document.getElementById('f-gc-dur').value = '3.0';
+  document.getElementById('f-hist-min').value = '0.0';
+  document.getElementById('f-vol-ratio').value = '1.0';
+  document.getElementById('f-spread').value = '0.1';
+  document.getElementById('f-peak-drop').value = '1.5';
+  document.getElementById('f-peak-dur').value = '5.0';
+  document.getElementById('f-peak-bars').value = '3';
+  document.getElementById('f-dc').checked = true;
+  document.getElementById('f-dc-dur').value = '0.0';
+  document.getElementById('f-tp').value = '3.0';
+  document.getElementById('f-sl').value = '1.5';
+  document.getElementById('f-max-hold').value = '60.0';
+  document.getElementById('f-max-trades').value = '10';
+  document.getElementById('f-max-loss').value = '3.0';
+  document.getElementById('f-cooldown').value = '5.0';
+  document.getElementById('f-max-pos').value = '0';
+  document.getElementById('f-opend-host').value = '127.0.0.1';
+  document.getElementById('f-opend-port').value = '11111';
+}
+
+function fillForm(cfg) {
+  document.getElementById('f-symbol').value = cfg.symbol || '';
+  document.getElementById('f-market').value = cfg.market || 'US';
+  const m = cfg.macd || {};
+  document.getElementById('f-timeframe').value = m.timeframe || 'K_1M';
+  document.getElementById('f-fast').value = m.fast_period || 12;
+  document.getElementById('f-slow').value = m.slow_period || 26;
+  document.getElementById('f-signal').value = m.signal_period || 9;
+  const o = cfg.order || {};
+  document.getElementById('f-order-type').value = o.order_type || 'market';
+  document.getElementById('f-qty').value = o.quantity || 5;
+  document.getElementById('f-limit-offset').value = o.limit_offset_pct || 0.02;
+  document.getElementById('f-mock-data').checked = o.mock_data === true;
+  document.getElementById('f-paper').checked = o.paper_trading !== false;
+  const en = cfg.entry || {};
+  document.getElementById('f-gc-dur').value = en.gc_duration_minutes ?? 3.0;
+  document.getElementById('f-hist-min').value = en.macd_histogram_min ?? 0.0;
+  document.getElementById('f-vol-ratio').value = en.volume_surge_ratio ?? 1.0;
+  document.getElementById('f-spread').value = en.max_spread_pct ?? 0.1;
+  const ex = cfg.exit || {};
+  document.getElementById('f-peak-drop').value = ex.peak_drop_pct ?? 1.5;
+  document.getElementById('f-peak-dur').value = ex.peak_drop_duration_minutes ?? 5.0;
+  document.getElementById('f-peak-bars').value = ex.peak_confirmation_bars ?? 3;
+  document.getElementById('f-dc').checked = ex.dead_cross !== false;
+  document.getElementById('f-dc-dur').value = ex.dc_duration_minutes ?? 0.0;
+  document.getElementById('f-tp').value = ex.take_profit_pct ?? 3.0;
+  document.getElementById('f-sl').value = ex.stop_loss_pct ?? 1.5;
+  document.getElementById('f-max-hold').value = ex.max_hold_minutes ?? 60.0;
+  const r = cfg.risk || {};
+  document.getElementById('f-max-trades').value = r.max_daily_trades ?? 10;
+  document.getElementById('f-max-loss').value = r.max_daily_loss_pct ?? 3.0;
+  document.getElementById('f-cooldown').value = r.cooldown_minutes ?? 5.0;
+  document.getElementById('f-max-pos').value = r.max_position_value ?? 0;
+  const op = cfg.opend || {};
+  document.getElementById('f-opend-host').value = op.host || '127.0.0.1';
+  document.getElementById('f-opend-port').value = op.port || 11111;
+}
+
+function getFormData() {
+  return {
+    symbol: document.getElementById('f-symbol').value.trim().toUpperCase(),
+    market: document.getElementById('f-market').value,
+    macd: {
+      fast_period: parseInt(document.getElementById('f-fast').value),
+      slow_period: parseInt(document.getElementById('f-slow').value),
+      signal_period: parseInt(document.getElementById('f-signal').value),
+      timeframe: document.getElementById('f-timeframe').value,
+    },
+    entry: {
+      gc_duration_minutes: parseFloat(document.getElementById('f-gc-dur').value),
+      macd_histogram_min: parseFloat(document.getElementById('f-hist-min').value),
+      volume_surge_ratio: parseFloat(document.getElementById('f-vol-ratio').value),
+      max_spread_pct: parseFloat(document.getElementById('f-spread').value),
+    },
+    exit: {
+      peak_drop_pct: parseFloat(document.getElementById('f-peak-drop').value),
+      peak_drop_duration_minutes: parseFloat(document.getElementById('f-peak-dur').value),
+      peak_confirmation_bars: parseInt(document.getElementById('f-peak-bars').value),
+      dead_cross: document.getElementById('f-dc').checked,
+      dc_duration_minutes: parseFloat(document.getElementById('f-dc-dur').value),
+      take_profit_pct: parseFloat(document.getElementById('f-tp').value),
+      stop_loss_pct: parseFloat(document.getElementById('f-sl').value),
+      max_hold_minutes: parseFloat(document.getElementById('f-max-hold').value),
+    },
+    order: {
+      quantity: parseInt(document.getElementById('f-qty').value),
+      order_type: document.getElementById('f-order-type').value,
+      limit_offset_pct: parseFloat(document.getElementById('f-limit-offset').value),
+      mock_data: document.getElementById('f-mock-data').checked,
+      paper_trading: document.getElementById('f-paper').checked,
+    },
+    risk: {
+      max_daily_trades: parseInt(document.getElementById('f-max-trades').value),
+      max_daily_loss_pct: parseFloat(document.getElementById('f-max-loss').value),
+      cooldown_minutes: parseFloat(document.getElementById('f-cooldown').value),
+      max_position_value: parseFloat(document.getElementById('f-max-pos').value),
+    },
+    opend: {
+      host: document.getElementById('f-opend-host').value,
+      port: parseInt(document.getElementById('f-opend-port').value),
+    },
+  };
+}
+
+async function saveSymbol() {
+  const data = getFormData();
+  if (!data.symbol) return showToast('銘柄コードを入力してください', true);
+  if (data.macd.fast_period >= data.macd.slow_period)
+    return showToast('短期EMA < 長期EMA にしてください', true);
+
+  let r;
+  if (editingSymbol) {
+    r = await fetch(`/api/symbols/${encodeURIComponent(editingSymbol)}`, {
+      method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data)
+    });
+  } else {
+    r = await fetch('/api/symbols', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data)
+    });
+  }
+  const d = await r.json();
+  if (!r.ok) return showToast(d.error, true);
+  showToast(editingSymbol ? `${data.symbol} を更新しました` : `${data.symbol} を追加しました`);
+  closeModal();
+  await loadSymbols();
+}
+
+async function deleteSymbol(sid) {
+  if (!confirm(`${sid} を削除しますか？`)) return;
+  const r = await fetch(`/api/symbols/${encodeURIComponent(sid)}`, {method:'DELETE'});
+  if (!r.ok) { const d = await r.json(); return showToast(d.error, true); }
+  showToast(`${sid} を削除しました`);
+  await loadSymbols();
+}
+
+// ─── Toast ──────────────────────────────────────────────────────
+let _toastTimer;
+function showToast(msg, isErr) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = isErr ? 'err' : '';
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.add('hidden'), 3000);
+}
+
+init();
+</script>
+</body>
+</html>
