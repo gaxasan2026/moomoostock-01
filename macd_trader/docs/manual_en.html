@@ -6,7 +6,7 @@
   --bg:#f6f5f1;--surface:#ffffff;--surface2:#eeecea;--border:#dedad4;
   --text:#1a2038;--text2:#5a637a;--text3:#8a93aa;--accent:#1a5fc0;
   --accent-bg:#e8f0fd;--green:#147a4e;--green-bg:#e4f5ec;--red:#c0301a;
-  --red-bg:#fceae8;--amber:#96640d;--amber-bg:#fdf4e0;--navy:#0e2140;
+  --red-bg:#fceae8;--amber:#96640d;--amber-bg:#fdf4e0;--navy:#0e2140;--header-bg:#0e2140;
   --mono:'SF Mono','Fira Code','Consolas',monospace;
 }
 @media(prefers-color-scheme:dark){
@@ -24,7 +24,7 @@ a{color:var(--accent);text-decoration:none}
 a:hover{text-decoration:underline}
 .layout{display:grid;grid-template-columns:240px 1fr;min-height:100vh;max-width:1200px;margin:0 auto}
 @media(max-width:768px){.layout{grid-template-columns:1fr}.sidebar{display:none}}
-header{grid-column:1/-1;background:var(--navy);color:#fff;padding:28px 40px;display:flex;align-items:flex-end;gap:20px}
+header{grid-column:1/-1;background:var(--header-bg);color:#fff;padding:28px 40px;display:flex;align-items:flex-end;gap:20px}
 .header-badge{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:4px;padding:3px 9px;color:rgba(255,255,255,.85);align-self:center;white-space:nowrap}
 header h1{font-size:26px;font-weight:700;letter-spacing:-.02em;line-height:1.2;color:#fff}
 header p{font-size:13px;color:rgba(255,255,255,.65);margin-top:4px}
