@@ -208,13 +208,15 @@ def run_sweep(symbol_id: str, start_date: str, end_date: str,
 
     df = _load_data(symbol_id, start_date, end_date, macd_cfg, opend_cfg)
 
+    # 型はdataclassの型注釈から取得する（JSON上は0.0が整数0として読まれている場合があり、
+    # 現在値の型では正しく判定できないため）
+    field_type = next(f.type for f in dataclasses.fields(base_entry_cfg) if f.name == param_name)
+
     print(f"\n=== パラメータスイープ: {symbol_id} / {param_name} ===")
     print(f"期間: {start_date} 〜 {end_date}" + (f" / 時間帯: {hours_filter[0]}-{hours_filter[1]}" if hours_filter else ""))
     print(f"{'値':>10} {'取引数':>8} {'合計損益(USD)':>14}")
     for raw_value in values:
-        # 型はデフォルト値に合わせる（int/float/bool等）
-        default = getattr(base_entry_cfg, param_name)
-        value = type(default)(raw_value) if not isinstance(default, bool) else raw_value
+        value = raw_value if field_type is bool else field_type(raw_value)
         entry_cfg = dataclasses.replace(base_entry_cfg, **{param_name: value})
         closed_trades, total_pnl = _replay(
             df, macd_cfg, entry_cfg, exit_cfg, order_cfg, risk_cfg, hours_filter=hours_filter,
