@@ -346,6 +346,7 @@ code {
     <a href="#cache">Local Cache</a>
     <a href="#fidelity">Fidelity Limitations</a>
     <a href="#results">Reading Results</a>
+    <a href="#screening">Symbol Screening</a>
     <a href="#roadmap">Roadmap</a>
   </div>
 </nav>
@@ -519,6 +520,48 @@ code {
     <div class="callout-body">
       As of v1, <code>report.py</code> does not automatically ingest backtest output. If you want an AI
       review of backtest results too, just paste the CSV content directly into a chat and ask for an evaluation.
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="screening">
+  <h2>Symbol Screening</h2>
+  <p>
+    A pre-check for whether a candidate symbol is well-suited to this MACD strategy, run before adding it to
+    the watchlist. Triggered from the <strong>"🔍 銘柄スクリーニング"</strong> button in the Web GUI header
+    (internally calls <code>screen.py</code>).
+  </p>
+
+  <h3>What it does</h3>
+  <ol class="steps">
+    <li>Runs one full-day backtest using the default configuration (or the symbol's existing config, if already registered)</li>
+    <li>Classifies each trade's entry time into the manual's 5 standard trading-hour slots (opening rush / best window / lunch lull / afternoon / closing) and aggregates the trend per slot</li>
+    <li>Actually re-simulates <strong>all 15 possible contiguous window combinations</strong> derivable from the 5 slot boundaries (not a naive sum of slot totals - recomputed for real every time, to account for path dependency)</li>
+    <li>Computes a monthly breakdown so you can check whether a promising window is a robust pattern or one lucky month</li>
+    <li>Generates an HTML report with a "Copy for AI Review" button</li>
+  </ol>
+
+  <h3>Usage</h3>
+  <ol class="steps">
+    <li>Click "🔍 銘柄スクリーニング" in the Web GUI header</li>
+    <li>Enter one or more symbol codes (comma- or newline-separated; each runs as an independent, concurrent job)</li>
+    <li>Set the period (1 week to 1 year before the end date), end date, market, and target position value</li>
+    <li>Click "スクリーニング開始" (Start Screening). Expect a few minutes per symbol (1 full-day run + 15 window variants = 16 backtests)</li>
+    <li>Once finished, open the report via "📄 レポートを開く" and use "🤖 AI評価用にコピー" to paste into a chat for evaluation</li>
+  </ol>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body">
+      <strong>Screening an unregistered symbol consumes 1 unit of historical K-line quota</strong> (billed per stock, resets after 7 days - see <a href="#quota">How Quota Works</a>).
+    </div>
+  </div>
+
+  <div class="callout pro">
+    <span class="callout-icon">🧪</span>
+    <div class="callout-body">
+      <strong>Screening itself never auto-decides whether to add a symbol.</strong> Evaluating the results and making the final call always goes through an AI conversation (copy-paste), for the same reason described in <a href="#results">Reading Results</a>: a fixed judgment algorithm can't keep up with an evolving strategy and would need constant maintenance.
     </div>
   </div>
 </section>
