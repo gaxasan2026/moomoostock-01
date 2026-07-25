@@ -70,9 +70,12 @@ def run_backtest(symbol_id: str, start_date: str, end_date: str):
 
     safe = symbol_id.replace(".", "_")
     out_path = BASE_DIR / "logs" / f"backtest_{safe}_{start_date}_{end_date}.csv"
+    out_path.unlink(missing_ok=True)  # バックテストは決定論的な再生のため、毎回上書きする（追記しない）
     trade_log = TradeLogger(str(out_path), enabled=True)
 
     closed_trades = 0
+    total_pnl = 0.0  # tracker.daily_realized_pnl はセッション境界でリセットされるため、
+                     # 期間全体の合計はここで別途積算する
 
     for i in range(KLINE_WINDOW, len(df) + 1):
         window = df.iloc[i - KLINE_WINDOW:i]
@@ -99,6 +102,7 @@ def run_backtest(symbol_id: str, start_date: str, end_date: str):
             if sell:
                 entry = tracker.position.entry_price
                 hold = round(tracker.hold_minutes, 1)
+                total_pnl += (current_price - entry) * order_cfg.quantity
                 trade_log.log_exit(symbol_id, current_price, order_cfg.quantity,
                                     entry, hold, reason, tracker.daily_trades + 1, bar_time)
                 tracker.close_position(current_price, reason)
@@ -112,7 +116,7 @@ def run_backtest(symbol_id: str, start_date: str, end_date: str):
 
     print(f"\nバックテスト完了: {symbol_id} {start_date} 〜 {end_date}")
     print(f"確定取引数（SELL）: {closed_trades}件")
-    print(f"合計損益: {tracker.daily_realized_pnl:+.2f} USD")
+    print(f"合計損益: {total_pnl:+.2f} USD")
     print(f"出力ファイル: {out_path}")
 
 
