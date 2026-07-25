@@ -5,9 +5,10 @@ backtest.py
 
 使い方:
     python3 backtest.py US.MU 2026-07-01 2026-07-24
+    python3 backtest.py US.MU 2026-07-01 2026-07-24 09:30-10:00   # 指定時間帯のみエントリー対象にする
 
 出力:
-    logs/backtest_<SYMBOL>_<開始日>_<終了日>.csv （trade_logger.py と同じCSV形式）
+    logs/backtest_<SYMBOL>_<開始日>_<終了日>[_<時刻>].csv （trade_logger.py と同じCSV形式）
 
 注意:
     ライブ運用では OpenD から5秒ごとにポーリングし、確定していない当該バーの
@@ -16,7 +17,10 @@ backtest.py
     このバックテストは「バー確定時点」でのみ判定を行う近似になる
     （ピーク下落系のエグジットタイミングがライブと数分ずれる可能性がある）。
 """
+from __future__ import annotations
+
 import sys
+from datetime import time as dt_time
 from pathlib import Path
 
 import pandas as pd
@@ -44,7 +48,16 @@ def load_symbol_config(symbol_id: str) -> dict:
     return cfg
 
 
-def run_backtest(symbol_id: str, start_date: str, end_date: str):
+def parse_hours_arg(arg: str) -> tuple[dt_time, dt_time]:
+    """'HH:MM-HH:MM' を (開始時刻, 終了時刻) に変換する"""
+    start_str, end_str = arg.split("-", 1)
+    start_t = dt_time.fromisoformat(start_str)
+    end_t = dt_time.fromisoformat(end_str)
+    return start_t, end_t
+
+
+def run_backtest(symbol_id: str, start_date: str, end_date: str,
+                  hours_filter: tuple[dt_time, dt_time] | None = None):
     cfg_dict = load_symbol_config(symbol_id)
     macd_cfg = MacdConfig(**cfg_dict["macd"])
     entry_cfg = EntryConfig(**cfg_dict["entry"])
@@ -69,7 +82,10 @@ def run_backtest(symbol_id: str, start_date: str, end_date: str):
     trade_engine = TradeEngine(entry_cfg, exit_cfg, risk_mgr)
 
     safe = symbol_id.replace(".", "_")
-    out_path = BASE_DIR / "logs" / f"backtest_{safe}_{start_date}_{end_date}.csv"
+    hours_suffix = ""
+    if hours_filter is not None:
+        hours_suffix = f"_{hours_filter[0].strftime('%H%M')}-{hours_filter[1].strftime('%H%M')}"
+    out_path = BASE_DIR / "logs" / f"backtest_{safe}_{start_date}_{end_date}{hours_suffix}.csv"
     out_path.unlink(missing_ok=True)  # バックテストは決定論的な再生のため、毎回上書きする（追記しない）
     trade_log = TradeLogger(str(out_path), enabled=True)
 
@@ -108,11 +124,16 @@ def run_backtest(symbol_id: str, start_date: str, end_date: str):
                 tracker.close_position(current_price, reason)
                 closed_trades += 1
         else:
-            buy, reason = trade_engine.should_buy(tracker, macd_vals, volume_ratio)
-            if buy:
-                trade_log.log_entry(symbol_id, current_price, order_cfg.quantity,
-                                     tracker.gc_duration_minutes, bar_time)
-                tracker.open_position(current_price, order_cfg.quantity, bar_time)
+            in_window = (
+                hours_filter is None
+                or hours_filter[0] <= bar_time.time() < hours_filter[1]
+            )
+            if in_window:
+                buy, reason = trade_engine.should_buy(tracker, macd_vals, volume_ratio)
+                if buy:
+                    trade_log.log_entry(symbol_id, current_price, order_cfg.quantity,
+                                         tracker.gc_duration_minutes, bar_time)
+                    tracker.open_position(current_price, order_cfg.quantity, bar_time)
 
     print(f"\nバックテスト完了: {symbol_id} {start_date} 〜 {end_date}")
     print(f"確定取引数（SELL）: {closed_trades}件")
@@ -122,12 +143,14 @@ def run_backtest(symbol_id: str, start_date: str, end_date: str):
 
 def main():
     if len(sys.argv) < 4:
-        print("使い方: python3 backtest.py <SYMBOL> <開始日> <終了日>")
+        print("使い方: python3 backtest.py <SYMBOL> <開始日> <終了日> [開始時刻-終了時刻]")
         print("例:     python3 backtest.py US.MU 2026-07-01 2026-07-24")
+        print("例:     python3 backtest.py US.MU 2026-07-01 2026-07-24 09:30-10:00")
         sys.exit(1)
     symbol_id = sys.argv[1].upper()
     start_date, end_date = sys.argv[2], sys.argv[3]
-    run_backtest(symbol_id, start_date, end_date)
+    hours_filter = parse_hours_arg(sys.argv[4]) if len(sys.argv) > 4 else None
+    run_backtest(symbol_id, start_date, end_date, hours_filter)
 
 
 if __name__ == "__main__":
