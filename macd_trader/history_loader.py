@@ -31,7 +31,10 @@ def _fetch_from_opend(symbol: str, start_date: str, end_date: str,
     try:
         ret, quota = quote_ctx.get_history_kl_quota(get_detail=False)
         if ret == ft.RET_OK:
-            logger.info(f"過去K線クォータ状況: {quota}")
+            used_quota, remain_quota, _detail_list = quota
+            logger.info(f"過去K線クォータ: 使用済み={used_quota} 残り={remain_quota}")
+        else:
+            logger.warning(f"クォータ状況の取得に失敗しました: {quota}")
 
         frames = []
         page_req_key = None
