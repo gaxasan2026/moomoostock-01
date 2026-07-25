@@ -1,0 +1,542 @@
+
+<meta charset="utf-8">
+<title>MACD Trader — バックテスト・過去データマニュアル</title>
+<style>
+/* ── Token system ─────────────────────────────────────────── */
+:root {
+  --bg:        #f6f5f1;
+  --surface:   #ffffff;
+  --surface2:  #eeecea;
+  --border:    #dedad4;
+  --text:      #1a2038;
+  --text2:     #5a637a;
+  --text3:     #8a93aa;
+  --accent:    #1a5fc0;
+  --accent-bg: #e8f0fd;
+  --green:     #147a4e;
+  --green-bg:  #e4f5ec;
+  --red:       #c0301a;
+  --red-bg:    #fceae8;
+  --amber:     #96640d;
+  --amber-bg:  #fdf4e0;
+  --navy:      #0e2140;
+  --mono:      'SF Mono', 'Fira Code', 'Consolas', monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:        #0c1220;
+    --surface:   #131c2e;
+    --surface2:  #1a2540;
+    --border:    #253045;
+    --text:      #dde4f0;
+    --text2:     #8a97b5;
+    --text3:     #58688a;
+    --accent:    #4d8fe8;
+    --accent-bg: #0e1f42;
+    --green:     #2dc47a;
+    --green-bg:  #0a2b1a;
+    --red:       #f0614a;
+    --red-bg:    #2e0e0a;
+    --amber:     #e8a830;
+    --amber-bg:  #2a1e04;
+    --navy:      #dde4f0;
+  }
+}
+:root[data-theme="light"] {
+  --bg:#f6f5f1;--surface:#ffffff;--surface2:#eeecea;--border:#dedad4;
+  --text:#1a2038;--text2:#5a637a;--text3:#8a93aa;--accent:#1a5fc0;
+  --accent-bg:#e8f0fd;--green:#147a4e;--green-bg:#e4f5ec;--red:#c0301a;
+  --red-bg:#fceae8;--amber:#96640d;--amber-bg:#fdf4e0;--navy:#0e2140;
+}
+:root[data-theme="dark"] {
+  --bg:#0c1220;--surface:#131c2e;--surface2:#1a2540;--border:#253045;
+  --text:#dde4f0;--text2:#8a97b5;--text3:#58688a;--accent:#4d8fe8;
+  --accent-bg:#0e1f42;--green:#2dc47a;--green-bg:#0a2b1a;--red:#f0614a;
+  --red-bg:#2e0e0a;--amber:#e8a830;--amber-bg:#2a1e04;--navy:#dde4f0;
+}
+
+/* ── Reset & base ─────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.7;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ── Layout ───────────────────────────────────────────────── */
+.layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  grid-template-rows: auto 1fr;
+  min-height: 100vh;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+@media (max-width: 768px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+}
+
+/* ── Header ───────────────────────────────────────────────── */
+header {
+  grid-column: 1 / -1;
+  background: var(--navy);
+  color: #fff;
+  padding: 28px 40px;
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+}
+.header-badge {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  background: rgba(255,255,255,.15);
+  border: 1px solid rgba(255,255,255,.25);
+  border-radius: 4px;
+  padding: 3px 9px;
+  color: rgba(255,255,255,.85);
+  align-self: center;
+  white-space: nowrap;
+}
+header h1 {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  line-height: 1.2;
+  color: #fff;
+}
+header p {
+  font-size: 13px;
+  color: rgba(255,255,255,.65);
+  margin-top: 4px;
+}
+.header-text { flex: 1; }
+
+/* ── Sidebar ──────────────────────────────────────────────── */
+.sidebar {
+  padding: 28px 0 40px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+}
+.sidebar-section {
+  margin-bottom: 4px;
+}
+.sidebar-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text3);
+  padding: 16px 24px 6px;
+}
+.sidebar a {
+  display: block;
+  font-size: 13px;
+  color: var(--text2);
+  padding: 5px 24px;
+  border-left: 2px solid transparent;
+  transition: color .15s, border-color .15s;
+}
+.sidebar a:hover, .sidebar a.active {
+  color: var(--accent);
+  border-left-color: var(--accent);
+  background: var(--accent-bg);
+  text-decoration: none;
+}
+
+/* ── Main content ─────────────────────────────────────────── */
+main {
+  padding: 40px 48px 80px;
+  max-width: 760px;
+}
+section {
+  margin-bottom: 56px;
+  scroll-margin-top: 24px;
+}
+h2 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--navy);
+  letter-spacing: -.02em;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--border);
+  text-wrap: balance;
+}
+h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 28px 0 10px;
+  text-wrap: balance;
+}
+p { margin-bottom: 12px; color: var(--text2); }
+p strong { color: var(--text); }
+
+/* ── Cards ────────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px 24px;
+  margin-bottom: 12px;
+}
+
+/* ── Param table ──────────────────────────────────────────── */
+.param-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  margin: 12px 0 20px;
+}
+.param-table th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--text3);
+  padding: 8px 12px;
+  border-bottom: 2px solid var(--border);
+}
+.param-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.param-table tr:last-child td { border-bottom: none; }
+.param-table .pname {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--accent);
+  white-space: nowrap;
+  width: 1%;
+}
+.param-table .pdefault {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text3);
+  white-space: nowrap;
+  width: 1%;
+  font-variant-numeric: tabular-nums;
+}
+.param-table .pdesc { color: var(--text); line-height: 1.55; }
+.param-table .pdesc small {
+  display: block;
+  margin-top: 4px;
+  color: var(--text2);
+  font-size: 12px;
+}
+.param-wrap { overflow-x: auto; }
+
+/* ── Badge-style labels ───────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.badge-green { background: var(--green-bg); color: var(--green); }
+.badge-red   { background: var(--red-bg);   color: var(--red); }
+.badge-blue  { background: var(--accent-bg); color: var(--accent); }
+.badge-gray  { background: var(--surface2);  color: var(--text2); }
+.badge-amber { background: var(--amber-bg);  color: var(--amber); }
+
+/* ── Callouts ─────────────────────────────────────────────── */
+.callout {
+  display: flex;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: 7px;
+  border-left: 3px solid;
+  margin: 16px 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+.callout-icon { font-size: 17px; flex-shrink: 0; margin-top: 1px; }
+.callout-body { color: var(--text); }
+.callout-body strong { color: inherit; }
+.callout.tip   { background: var(--accent-bg); border-color: var(--accent); }
+.callout.warn  { background: var(--amber-bg);  border-color: var(--amber); }
+.callout.danger{ background: var(--red-bg);    border-color: var(--red); }
+.callout.pro   { background: var(--green-bg);  border-color: var(--green); }
+
+/* ── Step list ────────────────────────────────────────────── */
+.steps { list-style: none; counter-reset: step; }
+.steps li {
+  counter-increment: step;
+  display: flex;
+  gap: 14px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: var(--text2);
+}
+.steps li::before {
+  content: counter(step);
+  width: 24px; height: 24px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ── Divider ──────────────────────────────────────────────── */
+hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+code {
+  font-family: var(--mono);
+  font-size: 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  color: var(--accent);
+}
+
+/* ── Quota meter ──────────────────────────────────────────── */
+.quota-meter {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 12px 0;
+}
+.quota-num { font-family: var(--mono); font-size: 20px; font-weight: 700; }
+.quota-label { font-size: 12px; color: var(--text3); }
+</style>
+
+<div class="layout">
+
+<!-- ── Header ── -->
+<header>
+  <div class="header-text">
+    <h1>MACD Trader — バックテスト</h1>
+    <p>過去データによるパラメータ検証マニュアル v1.0</p>
+  </div>
+  <span class="header-badge">リサーチツール</span>
+</header>
+
+<!-- ── Sidebar ── -->
+<nav class="sidebar">
+  <div class="sidebar-section">
+    <div class="sidebar-label">バックテスト</div>
+    <a href="#overview">概要</a>
+    <a href="#usage">使い方</a>
+    <a href="#quota">クォータの仕組み</a>
+    <a href="#cache">ローカルキャッシュ</a>
+    <a href="#fidelity">精度の制約</a>
+    <a href="#results">結果の見方</a>
+    <a href="#roadmap">今後の展開</a>
+  </div>
+</nav>
+
+<!-- ── Main ── -->
+<main>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="overview">
+  <h2>概要</h2>
+  <p>
+    <code>backtest.py</code> は、moomoo OpenD から取得した<strong>過去のK線データ</strong>に対して、
+    ライブ運用・Paper Tradingと<strong>全く同じ判断ロジック</strong>（<code>macd_engine.py</code> /
+    <code>signal_tracker.py</code> / <code>trade_engine.py</code> / <code>risk_manager.py</code>）を
+    バー単位で再生し、その銘柄の設定値が実際の値動きに対して有効だったかを検証するツールです。
+  </p>
+  <p>
+    Paper Tradingでパラメータを検証するには最低2週間の実運用が必要ですが、バックテストなら
+    過去の期間を指定するだけで、同じ検証を数秒〜数分で行えます。
+  </p>
+
+  <div class="callout tip">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body">
+      <strong>本マニュアルは MACD Trader 本体の運用マニュアルを前提とします。</strong>
+      GC継続時間・利確ライン・損切りラインなど設定値そのものの意味は
+      <a href="manual_ja.html">MACD Trader 操作マニュアル</a>を参照してください。
+      本マニュアルでは、バックテスト特有の話題（過去データ取得・クォータ・キャッシュ・再現精度）のみを扱います。
+    </div>
+  </div>
+
+  <h3>本体との関係</h3>
+  <p>
+    <code>backtest.py</code> は新しいロジックを持たず、<code>data/symbols.json</code>に登録済みの
+    銘柄設定と、ライブ運用が使っているのと同じPythonモジュールをそのまま読み込んで動作します。
+    これは「バックテストの判断が実運用の判断と食い違う」というズレを防ぐための、意図的な設計判断です。
+  </p>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="usage">
+  <h2>使い方</h2>
+  <p>対象銘柄は事前にWeb GUIまたは<code>data/symbols.json</code>に登録されている必要があります（MACD・エントリー・エグジット・リスク設定を読み込むため）。</p>
+
+  <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
+    cd macd_trader<br>
+    python3 backtest.py &lt;銘柄&gt; &lt;開始日&gt; &lt;終了日&gt;<br><br>
+    # 例<br>
+    python3 backtest.py US.MU 2026-07-18 2026-07-24
+  </div>
+
+  <p>実行すると、コンソールに各BUY/SELLがライブ運用と同じ書式で表示され、最後に確定取引数・合計損益・出力ファイルパスのサマリーが出ます。</p>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body">
+      日付範囲を広げすぎると、初回のみOpenDへの過去データ取得（クォータ消費）が発生します。まずは1〜2週間程度の短い期間で試すことをお勧めします。
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="quota">
+  <h2>過去K線クォータの仕組み</h2>
+  <p>moomoo/Futuの過去K線取得APIには「クォータ（利用枠）」があり、公式ドキュメントによると以下のルールで運用されています。</p>
+
+  <table class="param-table">
+    <thead><tr><th>項目</th><th>内容</th></tr></thead>
+    <tbody>
+      <tr><td class="pname">配布基準</td><td class="pdesc">口座の資産・取引状況に応じて配布される（具体的な上限値は非公開）</td></tr>
+      <tr><td class="pname">消費単位</td><td class="pdesc">「銘柄」単位。同じ銘柄なら期間の長さやK線本数に関わらず1消費（実測で確認済み）</td></tr>
+      <tr><td class="pname">リセット</td><td class="pdesc">消費した日から<strong>7日後</strong>に自動解放される（月次ではなくローリング方式）</td></tr>
+      <tr><td class="pname">レート制限</td><td class="pdesc">30秒あたり最大60リクエスト（ページング時は初回のみ適用）</td></tr>
+    </tbody>
+  </table>
+
+  <h3>実測結果</h3>
+  <p><code>US.MU</code> の1週間分（K_1M、1,950本、2ページに分割取得）を実際に取得して検証したところ：</p>
+
+  <div class="card">
+    <div class="quota-meter">
+      <div><div class="quota-num" style="color:var(--text3)">0 / 300</div><div class="quota-label">取得前</div></div>
+      <div style="color:var(--text3)">→</div>
+      <div><div class="quota-num" style="color:var(--accent)">1 / 300</div><div class="quota-label">取得後（使用済み/残り）</div></div>
+    </div>
+    <p style="margin:0;font-size:13px">ページ数や期間の長さに関わらず、消費はちょうど1でした。銘柄単位の課金であることが実測で確認できます。</p>
+  </div>
+
+  <h3>クォータ状況の確認方法</h3>
+  <p><code>history_loader.py</code> は、OpenDから実際にデータを取得する直前に <code>get_history_kl_quota()</code> を呼び出し、使用済み・残りをログに出力します（キャッシュヒット時はこの呼び出し自体スキップされ、クォータは消費されません）。</p>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="cache">
+  <h2>ローカルキャッシュ</h2>
+  <p>
+    過去の株価データは一度取得すれば変わりません。にもかかわらず、パラメータを変えて何度もバックテストを実行するたびにOpenDへ再取得しにいくと、クォータを無駄に消費してしまいます。
+  </p>
+  <p>
+    そこで <code>history_loader.py</code> は、初回のみOpenDから取得して <code>data/history/</code> にCSVとして保存し、2回目以降は同じ銘柄・足種・期間の組み合わせであればローカルファイルから読み込みます。
+  </p>
+
+  <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
+    data/history/US_MU_K_1M_2026-07-18_2026-07-24.csv
+  </div>
+
+  <p>これにより、「データ取得」はOpenDに依存する1回きりの操作、「パラメータ調整・再生」は何度でもローカルで完結する操作、として明確に分離されます。</p>
+
+  <div class="callout tip">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body">このキャッシュディレクトリは <code>.gitignore</code> でGit管理外になっています（個人の調査用データのため）。</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="fidelity">
+  <h2>精度の制約</h2>
+  <p>バックテストは実運用に忠実であるよう設計していますが、原理的に避けられない差異が2点あります。正直に開示します。</p>
+
+  <h3>① バー確定時点でのみ判定する近似</h3>
+  <p>
+    ライブ運用はOpenDを5秒ごとにポーリングし、まだ確定していない「形成中の最新バー」のリアルタイム価格でもピーク追跡・エグジット判定を行っています。
+    一方、過去データは確定済みバーのOHLC（始値・高値・安値・終値）のみが記録されており、バー内の値動きの過程は分かりません。
+  </p>
+  <p>
+    例えるなら、ライブ運用は<strong>動画</strong>を見ながら判断しているのに対し、バックテストは<strong>1分ごとの写真</strong>を見ながら判断しているようなものです。
+    ピーク下落系のエグジットタイミングが、ライブと数分ずれる可能性があります。
+  </p>
+
+  <h3>② 複数日にまたがる場合のGC/DC継続時間</h3>
+  <p>
+    以前は、夜間の市場休止をまたいでGC（ゴールデンクロス）継続時間を数え続けてしまい、「GC継続 1051.0分」のような無意味な値が発生する問題がありました。
+    現在は日付が変わったタイミングを検出し、GC/DC継続時間の起点を自動的にリセットするよう修正済みです（この修正はライブ運用側にも同じ恩恵があります）。
+  </p>
+
+  <h3>③ 日次リスクカウンターは複数日でリセットされない</h3>
+  <p>
+    <code>max_daily_trades</code>・<code>max_daily_loss_pct</code> の日次カウンターは、ライブ運用・バックテストのいずれも日付が変わってもリセットされません（v1時点の既知の制約）。
+    複数日にまたがる長期間のバックテストでは、期間の途中でこれらの上限に達し、それ以降の取引が意図せず抑制される場合があります。
+  </p>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="results">
+  <h2>結果の見方</h2>
+  <p>
+    出力されるCSVは、ライブ運用の <code>trade_logger.py</code> と<strong>全く同じスキーマ</strong>です
+    （<code>timestamp, action, symbol, price, quantity, entry_price, pnl_usd, pnl_pct, hold_minutes, exit_reason, gc_duration, daily_trades</code>）。
+  </p>
+  <p>
+    出力先は <code>logs/backtest_&lt;銘柄&gt;_&lt;開始日&gt;_&lt;終了日&gt;.csv</code> で、ライブ運用の
+    <code>logs/trades_&lt;銘柄&gt;.csv</code> とは別ファイルに分離されています。過去に「全銘柄の取引が1つのファイルに混在してしまう」バグを修正した経緯があるため、意図的にファイルを分けて事故を防いでいます。
+  </p>
+
+  <div class="callout tip">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body">
+      v1時点では <code>report.py</code> はこのバックテスト結果を自動では読み込みません。バックテスト結果もAI評価にかけたい場合は、CSVの中身をそのままチャットに貼り付けて評価を依頼してください。
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="roadmap">
+  <h2>今後の展開</h2>
+  <p>現在のv1は「1銘柄・1期間を1回再生する」というコア機能に絞っています。</p>
+  <ul style="margin:8px 0 0 20px;font-size:14px;color:var(--text2);line-height:1.8">
+    <li>複数パラメータの組み合わせを自動で試すグリッドサーチ（v2で検討）</li>
+    <li>複数銘柄の一括バックテスト</li>
+    <li>バックテスト結果の<code>report.py</code>への統合</li>
+  </ul>
+  <p style="margin-top:12px">
+    グリッドサーチは強力ですが、まずはこのコアの再生ロジックが実運用の判断と正確に一致することを、より多くの実データで検証してから着手する方針です。
+  </p>
+</section>
+
+</main>
+</div>
+
+<script>
+// Active sidebar link
+const links = document.querySelectorAll('.sidebar a');
+const sections = document.querySelectorAll('main section');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.remove('active'));
+      const id = e.target.id;
+      const link = document.querySelector(`.sidebar a[href="#${id}"]`);
+      if (link) link.classList.add('active');
+    }
+  });
+}, { rootMargin: '-30% 0px -60% 0px' });
+sections.forEach(s => observer.observe(s));
+</script>

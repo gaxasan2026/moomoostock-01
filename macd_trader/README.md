@@ -3,6 +3,7 @@
 > Automated short-term trading system based on MACD Golden Cross / Dead Cross signals, powered by the moomoo OpenAPI.
 
 [日本語マニュアル](docs/manual_ja.html) | [English Manual](docs/manual_en.html)
+[バックテストマニュアル](docs/backtest_manual_ja.html) | [Backtest Manual](docs/backtest_manual_en.html)
 
 ---
 

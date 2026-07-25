@@ -1,0 +1,558 @@
+
+<meta charset="utf-8">
+<title>MACD Trader — Backtest & Historical Data Manual</title>
+<style>
+/* ── Token system ─────────────────────────────────────────── */
+:root {
+  --bg:        #f6f5f1;
+  --surface:   #ffffff;
+  --surface2:  #eeecea;
+  --border:    #dedad4;
+  --text:      #1a2038;
+  --text2:     #5a637a;
+  --text3:     #8a93aa;
+  --accent:    #1a5fc0;
+  --accent-bg: #e8f0fd;
+  --green:     #147a4e;
+  --green-bg:  #e4f5ec;
+  --red:       #c0301a;
+  --red-bg:    #fceae8;
+  --amber:     #96640d;
+  --amber-bg:  #fdf4e0;
+  --navy:      #0e2140;
+  --mono:      'SF Mono', 'Fira Code', 'Consolas', monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:        #0c1220;
+    --surface:   #131c2e;
+    --surface2:  #1a2540;
+    --border:    #253045;
+    --text:      #dde4f0;
+    --text2:     #8a97b5;
+    --text3:     #58688a;
+    --accent:    #4d8fe8;
+    --accent-bg: #0e1f42;
+    --green:     #2dc47a;
+    --green-bg:  #0a2b1a;
+    --red:       #f0614a;
+    --red-bg:    #2e0e0a;
+    --amber:     #e8a830;
+    --amber-bg:  #2a1e04;
+    --navy:      #dde4f0;
+  }
+}
+:root[data-theme="light"] {
+  --bg:#f6f5f1;--surface:#ffffff;--surface2:#eeecea;--border:#dedad4;
+  --text:#1a2038;--text2:#5a637a;--text3:#8a93aa;--accent:#1a5fc0;
+  --accent-bg:#e8f0fd;--green:#147a4e;--green-bg:#e4f5ec;--red:#c0301a;
+  --red-bg:#fceae8;--amber:#96640d;--amber-bg:#fdf4e0;--navy:#0e2140;
+}
+:root[data-theme="dark"] {
+  --bg:#0c1220;--surface:#131c2e;--surface2:#1a2540;--border:#253045;
+  --text:#dde4f0;--text2:#8a97b5;--text3:#58688a;--accent:#4d8fe8;
+  --accent-bg:#0e1f42;--green:#2dc47a;--green-bg:#0a2b1a;--red:#f0614a;
+  --red-bg:#2e0e0a;--amber:#e8a830;--amber-bg:#2a1e04;--navy:#dde4f0;
+}
+
+/* ── Reset & base ─────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.7;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ── Layout ───────────────────────────────────────────────── */
+.layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  grid-template-rows: auto 1fr;
+  min-height: 100vh;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+@media (max-width: 768px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+}
+
+/* ── Header ───────────────────────────────────────────────── */
+header {
+  grid-column: 1 / -1;
+  background: var(--navy);
+  color: #fff;
+  padding: 28px 40px;
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+}
+.header-badge {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  background: rgba(255,255,255,.15);
+  border: 1px solid rgba(255,255,255,.25);
+  border-radius: 4px;
+  padding: 3px 9px;
+  color: rgba(255,255,255,.85);
+  align-self: center;
+  white-space: nowrap;
+}
+header h1 {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  line-height: 1.2;
+  color: #fff;
+}
+header p {
+  font-size: 13px;
+  color: rgba(255,255,255,.65);
+  margin-top: 4px;
+}
+.header-text { flex: 1; }
+
+/* ── Sidebar ──────────────────────────────────────────────── */
+.sidebar {
+  padding: 28px 0 40px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+}
+.sidebar-section {
+  margin-bottom: 4px;
+}
+.sidebar-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text3);
+  padding: 16px 24px 6px;
+}
+.sidebar a {
+  display: block;
+  font-size: 13px;
+  color: var(--text2);
+  padding: 5px 24px;
+  border-left: 2px solid transparent;
+  transition: color .15s, border-color .15s;
+}
+.sidebar a:hover, .sidebar a.active {
+  color: var(--accent);
+  border-left-color: var(--accent);
+  background: var(--accent-bg);
+  text-decoration: none;
+}
+
+/* ── Main content ─────────────────────────────────────────── */
+main {
+  padding: 40px 48px 80px;
+  max-width: 760px;
+}
+section {
+  margin-bottom: 56px;
+  scroll-margin-top: 24px;
+}
+h2 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--navy);
+  letter-spacing: -.02em;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--border);
+  text-wrap: balance;
+}
+h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 28px 0 10px;
+  text-wrap: balance;
+}
+p { margin-bottom: 12px; color: var(--text2); }
+p strong { color: var(--text); }
+
+/* ── Cards ────────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px 24px;
+  margin-bottom: 12px;
+}
+
+/* ── Param table ──────────────────────────────────────────── */
+.param-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  margin: 12px 0 20px;
+}
+.param-table th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--text3);
+  padding: 8px 12px;
+  border-bottom: 2px solid var(--border);
+}
+.param-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.param-table tr:last-child td { border-bottom: none; }
+.param-table .pname {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--accent);
+  white-space: nowrap;
+  width: 1%;
+}
+.param-table .pdefault {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text3);
+  white-space: nowrap;
+  width: 1%;
+  font-variant-numeric: tabular-nums;
+}
+.param-table .pdesc { color: var(--text); line-height: 1.55; }
+.param-table .pdesc small {
+  display: block;
+  margin-top: 4px;
+  color: var(--text2);
+  font-size: 12px;
+}
+.param-wrap { overflow-x: auto; }
+
+/* ── Badge-style labels ───────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.badge-green { background: var(--green-bg); color: var(--green); }
+.badge-red   { background: var(--red-bg);   color: var(--red); }
+.badge-blue  { background: var(--accent-bg); color: var(--accent); }
+.badge-gray  { background: var(--surface2);  color: var(--text2); }
+.badge-amber { background: var(--amber-bg);  color: var(--amber); }
+
+/* ── Callouts ─────────────────────────────────────────────── */
+.callout {
+  display: flex;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: 7px;
+  border-left: 3px solid;
+  margin: 16px 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+.callout-icon { font-size: 17px; flex-shrink: 0; margin-top: 1px; }
+.callout-body { color: var(--text); }
+.callout-body strong { color: inherit; }
+.callout.tip   { background: var(--accent-bg); border-color: var(--accent); }
+.callout.warn  { background: var(--amber-bg);  border-color: var(--amber); }
+.callout.danger{ background: var(--red-bg);    border-color: var(--red); }
+.callout.pro   { background: var(--green-bg);  border-color: var(--green); }
+
+/* ── Step list ────────────────────────────────────────────── */
+.steps { list-style: none; counter-reset: step; }
+.steps li {
+  counter-increment: step;
+  display: flex;
+  gap: 14px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: var(--text2);
+}
+.steps li::before {
+  content: counter(step);
+  width: 24px; height: 24px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ── Divider ──────────────────────────────────────────────── */
+hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+code {
+  font-family: var(--mono);
+  font-size: 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  color: var(--accent);
+}
+
+/* ── Quota meter ──────────────────────────────────────────── */
+.quota-meter {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 12px 0;
+}
+.quota-num { font-family: var(--mono); font-size: 20px; font-weight: 700; }
+.quota-label { font-size: 12px; color: var(--text3); }
+</style>
+
+<div class="layout">
+
+<!-- ── Header ── -->
+<header>
+  <div class="header-text">
+    <h1>MACD Trader — Backtest</h1>
+    <p>Parameter Validation with Historical Data v1.0</p>
+  </div>
+  <span class="header-badge">Research Tool</span>
+</header>
+
+<!-- ── Sidebar ── -->
+<nav class="sidebar">
+  <div class="sidebar-section">
+    <div class="sidebar-label">Backtest</div>
+    <a href="#overview">Overview</a>
+    <a href="#usage">Usage</a>
+    <a href="#quota">How Quota Works</a>
+    <a href="#cache">Local Cache</a>
+    <a href="#fidelity">Fidelity Limitations</a>
+    <a href="#results">Reading Results</a>
+    <a href="#roadmap">Roadmap</a>
+  </div>
+</nav>
+
+<!-- ── Main ── -->
+<main>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="overview">
+  <h2>Overview</h2>
+  <p>
+    <code>backtest.py</code> replays historical K-line data (fetched from moomoo OpenD) through the
+    <strong>exact same decision logic</strong> used in live/Paper Trading (<code>macd_engine.py</code> /
+    <code>signal_tracker.py</code> / <code>trade_engine.py</code> / <code>risk_manager.py</code>), bar by bar,
+    to check whether a symbol's configured parameter values would actually have been effective against
+    real past price action.
+  </p>
+  <p>
+    Validating parameters through Paper Trading requires at least two weeks of live operation.
+    A backtest does the same validation in seconds to minutes, against any historical period you choose.
+  </p>
+
+  <div class="callout tip">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body">
+      <strong>This manual assumes you've already read the main MACD Trader manual.</strong>
+      For the meaning of individual parameters (GC duration, take-profit, stop-loss, etc.), see the
+      <a href="manual_en.html">MACD Trader User Manual</a>. This manual covers only backtest-specific
+      topics: fetching historical data, quota, caching, and replay fidelity.
+    </div>
+  </div>
+
+  <h3>Relationship to the main app</h3>
+  <p>
+    <code>backtest.py</code> introduces no new trading logic. It loads a symbol's existing configuration
+    from <code>data/symbols.json</code> and imports the exact same Python modules the live bot uses. This is
+    a deliberate design choice to prevent backtest results from silently diverging from what the live bot
+    would actually do.
+  </p>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="usage">
+  <h2>Usage</h2>
+  <p>The target symbol must already be registered via the Web GUI or in <code>data/symbols.json</code> (its MACD, entry, exit, and risk settings are read from there).</p>
+
+  <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
+    cd macd_trader<br>
+    python3 backtest.py &lt;SYMBOL&gt; &lt;start-date&gt; &lt;end-date&gt;<br><br>
+    # Example<br>
+    python3 backtest.py US.MU 2026-07-18 2026-07-24
+  </div>
+
+  <p>The console prints each simulated BUY/SELL in the same format as live trading, followed by a summary: total closed trades, total PnL, and the output file path.</p>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body">
+      A very wide date range triggers a real OpenD historical-data fetch (consuming quota) the first time.
+      Start with a short window (1–2 weeks) while you get familiar with the tool.
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="quota">
+  <h2>How Historical K-line Quota Works</h2>
+  <p>moomoo/Futu's historical K-line API is gated by a quota system. Per the official documentation:</p>
+
+  <table class="param-table">
+    <thead><tr><th>Item</th><th>Details</th></tr></thead>
+    <tbody>
+      <tr><td class="pname">Allocation</td><td class="pdesc">Based on your account's assets and trading activity (the exact numeric limit isn't publicly documented)</td></tr>
+      <tr><td class="pname">Consumption unit</td><td class="pdesc">Per <strong>stock</strong>. The same symbol costs 1 unit regardless of date-range length or number of bars (confirmed empirically)</td></tr>
+      <tr><td class="pname">Reset</td><td class="pdesc">Auto-released <strong>7 days</strong> after the day it was consumed (a rolling window, not monthly)</td></tr>
+      <tr><td class="pname">Rate limit</td><td class="pdesc">Max 60 requests per 30 seconds (applies only to the first page of a paginated request)</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Measured result</h3>
+  <p>We fetched one week of <code>US.MU</code> (K_1M, 1,950 bars, retrieved across 2 pages) and measured quota before/after:</p>
+
+  <div class="card">
+    <div class="quota-meter">
+      <div><div class="quota-num" style="color:var(--text3)">0 / 300</div><div class="quota-label">before</div></div>
+      <div style="color:var(--text3)">→</div>
+      <div><div class="quota-num" style="color:var(--accent)">1 / 300</div><div class="quota-label">after (used / remaining)</div></div>
+    </div>
+    <p style="margin:0;font-size:13px">Exactly 1 unit was consumed regardless of page count or date-range length — confirming per-stock billing.</p>
+  </div>
+
+  <h3>Checking quota status</h3>
+  <p><code>history_loader.py</code> calls <code>get_history_kl_quota()</code> right before an actual OpenD fetch and logs the used/remaining values. On a cache hit, this call is skipped entirely — no quota is consumed.</p>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="cache">
+  <h2>Local Cache</h2>
+  <p>
+    Historical price data never changes once it's in the past. Yet re-running a backtest every time you
+    tweak a parameter would otherwise re-fetch the same data from OpenD on every run, wasting quota.
+  </p>
+  <p>
+    <code>history_loader.py</code> fetches from OpenD only the first time, saves the result as a CSV under
+    <code>data/history/</code>, and reads from that local file on any subsequent request for the same
+    symbol + timeframe + date range.
+  </p>
+
+  <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
+    data/history/US_MU_K_1M_2026-07-18_2026-07-24.csv
+  </div>
+
+  <p>This cleanly separates "fetching data" (a one-time operation dependent on OpenD) from "tuning parameters and replaying" (unlimited, fully local).</p>
+
+  <div class="callout tip">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body">This cache directory is excluded from Git via <code>.gitignore</code> (it's personal research data).</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="fidelity">
+  <h2>Fidelity Limitations</h2>
+  <p>The backtest is designed to match live behavior as closely as possible, but two gaps are inherent to the approach. We disclose both here.</p>
+
+  <h3>① Closed-bar-only approximation</h3>
+  <p>
+    Live trading polls OpenD every 5 seconds and tracks peaks/exits against the live price of the
+    still-forming latest bar. Historical data only contains the closed OHLC (open/high/low/close) of each
+    bar — the path the price took within that bar is not recorded.
+  </p>
+  <p>
+    Think of live trading as watching a <strong>video</strong>, while the backtest only sees a
+    <strong>snapshot once per minute</strong>. Peak-drop-based exits may fire a few minutes earlier or
+    later in the backtest than they would have live.
+  </p>
+
+  <h3>② GC/DC duration across multi-day gaps</h3>
+  <p>
+    Earlier, the golden-cross duration counter kept accumulating across an overnight market closure,
+    producing meaningless values like "GC duration: 1051 minutes." This has since been fixed: a date change
+    between consecutive bars is now treated as a session boundary, and the GC/DC clock restarts at that bar
+    (this fix also benefits any live bot that stays running across midnight).
+  </p>
+
+  <h3>③ Daily risk counters don't reset across days</h3>
+  <p>
+    <code>max_daily_trades</code> and <code>max_daily_loss_pct</code> counters are not reset at day
+    boundaries, in either live trading or backtesting (a known v1 limitation). A multi-day backtest can hit
+    these caps partway through the period, suppressing further simulated trades for the rest of the range.
+  </p>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="results">
+  <h2>Reading Results</h2>
+  <p>
+    The output CSV uses the <strong>exact same schema</strong> as live trading's <code>trade_logger.py</code>
+    (<code>timestamp, action, symbol, price, quantity, entry_price, pnl_usd, pnl_pct, hold_minutes,
+    exit_reason, gc_duration, daily_trades</code>).
+  </p>
+  <p>
+    Output goes to <code>logs/backtest_&lt;SYMBOL&gt;_&lt;start&gt;_&lt;end&gt;.csv</code>, kept separate
+    from live trading's <code>logs/trades_&lt;SYMBOL&gt;.csv</code>. This is deliberate: we previously fixed
+    a bug where all symbols' live trades ended up commingled in one file, so backtest output is isolated on
+    purpose to avoid ever repeating that mistake.
+  </p>
+
+  <div class="callout tip">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body">
+      As of v1, <code>report.py</code> does not automatically ingest backtest output. If you want an AI
+      review of backtest results too, just paste the CSV content directly into a chat and ask for an evaluation.
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="roadmap">
+  <h2>Roadmap</h2>
+  <p>The current v1 is scoped to a single core loop: replay one symbol over one date range.</p>
+  <ul style="margin:8px 0 0 20px;font-size:14px;color:var(--text2);line-height:1.8">
+    <li>Parameter grid search across multiple combinations (candidate for v2)</li>
+    <li>Batch backtesting across multiple symbols</li>
+    <li>Integrating backtest output into <code>report.py</code></li>
+  </ul>
+  <p style="margin-top:12px">
+    Grid search is powerful, but it's deferred until the core replay engine's fidelity against real live
+    behavior has been validated over more historical data.
+  </p>
+</section>
+
+</main>
+</div>
+
+<script>
+// Active sidebar link
+const links = document.querySelectorAll('.sidebar a');
+const sections = document.querySelectorAll('main section');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.remove('active'));
+      const id = e.target.id;
+      const link = document.querySelector(`.sidebar a[href="#${id}"]`);
+      if (link) link.classList.add('active');
+    }
+  });
+}, { rootMargin: '-30% 0px -60% 0px' });
+sections.forEach(s => observer.observe(s));
+</script>
