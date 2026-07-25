@@ -142,12 +142,13 @@ def main(config_path: str):
                 if tracker.has_position:
                     sell, reason = trade_engine.should_sell(tracker, macd_vals)
                     if sell:
-                        ok, order_id = order_mgr.place_sell_order(current_price, reason)
+                        qty = tracker.position.quantity  # BUY時の株数をそのまま使う
+                        ok, order_id = order_mgr.place_sell_order(current_price, reason, qty)
                         if ok:
                             trade_log.log_exit(
                                 symbol=cfg.symbol,
                                 price=current_price,
-                                quantity=cfg.order.quantity,
+                                quantity=qty,
                                 entry_price=tracker.position.entry_price,
                                 hold_minutes=tracker.hold_minutes,
                                 exit_reason=reason,
@@ -163,16 +164,17 @@ def main(config_path: str):
                 else:
                     buy, reason = trade_engine.should_buy(tracker, macd_vals, volume_ratio)
                     if buy:
-                        ok, order_id = order_mgr.place_buy_order(current_price)
+                        qty = risk_mgr.compute_quantity(current_price, cfg.order.quantity)
+                        ok, order_id = order_mgr.place_buy_order(current_price, qty)
                         if ok:
                             trade_log.log_entry(
                                 symbol=cfg.symbol,
                                 price=current_price,
-                                quantity=cfg.order.quantity,
+                                quantity=qty,
                                 gc_duration=tracker.gc_duration_minutes,
                                 timestamp=now,
                             )
-                            tracker.open_position(current_price, cfg.order.quantity, bar_time)
+                            tracker.open_position(current_price, qty, bar_time)
                     else:
                         trade_log.log_skip(reason)
                         if cfg.logging.show_realtime_price:

@@ -232,16 +232,17 @@ def _bot_loop(symbol_id: str, cfg_dict: dict, state: BotState):
                 if tracker.has_position:
                     sell, reason = trade_engine.should_sell(tracker, macd_vals)
                     if sell:
-                        ok, _ = order_mgr.place_sell_order(current_price, reason)
+                        qty = tracker.position.quantity  # BUY時の株数をそのまま使う（現在価格から再計算しない）
+                        ok, _ = order_mgr.place_sell_order(current_price, reason, qty)
                         if ok:
                             entry = tracker.position.entry_price
-                            pnl = (current_price - entry) * cfg.order.quantity
+                            pnl = (current_price - entry) * qty
                             pnl_pct = (current_price - entry) / entry * 100
                             hold = round(tracker.hold_minutes, 1)
                             state.trades.insert(0, {
                                 "action": "SELL", "symbol": symbol_id,
                                 "price": round(current_price, 4),
-                                "quantity": cfg.order.quantity,
+                                "quantity": qty,
                                 "entry_price": round(entry, 4),
                                 "pnl_usd": round(pnl, 2),
                                 "pnl_pct": round(pnl_pct, 2),
@@ -249,28 +250,29 @@ def _bot_loop(symbol_id: str, cfg_dict: dict, state: BotState):
                                 "exit_reason": reason,
                                 "timestamp": now.strftime("%H:%M:%S"),
                             })
-                            trade_log.log_exit(symbol_id, current_price, cfg.order.quantity,
+                            trade_log.log_exit(symbol_id, current_price, qty,
                                                entry, hold, reason, tracker.daily_trades + 1, now)
                             tracker.close_position(current_price, reason)
                             logger.info(f"[{symbol_id}] SELL @ {current_price:.4f} | {reason} | PnL {pnl:+.2f}USD")
                 else:
                     buy, reason = trade_engine.should_buy(tracker, macd_vals, volume_ratio)
                     if buy:
-                        ok, _ = order_mgr.place_buy_order(current_price)
+                        qty = risk_mgr.compute_quantity(current_price, cfg.order.quantity)
+                        ok, _ = order_mgr.place_buy_order(current_price, qty)
                         if ok:
                             state.trades.insert(0, {
                                 "action": "BUY", "symbol": symbol_id,
                                 "price": round(current_price, 4),
-                                "quantity": cfg.order.quantity,
+                                "quantity": qty,
                                 "entry_price": round(current_price, 4),
                                 "pnl_usd": None, "pnl_pct": None,
                                 "hold_minutes": 0.0, "exit_reason": reason,
                                 "timestamp": now.strftime("%H:%M:%S"),
                             })
-                            trade_log.log_entry(symbol_id, current_price, cfg.order.quantity,
+                            trade_log.log_entry(symbol_id, current_price, qty,
                                                 tracker.gc_duration_minutes, now)
-                            tracker.open_position(current_price, cfg.order.quantity, bar_time)
-                            logger.info(f"[{symbol_id}] BUY @ {current_price:.4f} | GC {tracker.gc_duration_minutes:.1f}分")
+                            tracker.open_position(current_price, qty, bar_time)
+                            logger.info(f"[{symbol_id}] BUY @ {current_price:.4f} | GC {tracker.gc_duration_minutes:.1f}分 | {qty}株")
 
             time.sleep(5)
 

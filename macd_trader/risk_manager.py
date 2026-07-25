@@ -39,6 +39,16 @@ class RiskManager:
 
         return True, ""
 
+    def compute_quantity(self, price: float, default_quantity: int) -> int:
+        """
+        max_position_valueが設定されていれば、現在価格から株数を自動計算する
+        （銘柄間で株価水準に関わらず想定元本を揃えるため）。
+        0（未設定）の場合は default_quantity（固定株数）をそのまま使う。
+        """
+        if self.cfg.max_position_value > 0 and price > 0:
+            return max(1, int(self.cfg.max_position_value // price))
+        return default_quantity
+
     def check_position_value(self, price: float, quantity: int) -> tuple[bool, str]:
         """ポジション金額の上限チェック"""
         if self.cfg.max_position_value > 0:

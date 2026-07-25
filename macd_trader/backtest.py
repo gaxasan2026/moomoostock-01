@@ -122,10 +122,11 @@ def run_backtest(symbol_id: str, start_date: str, end_date: str,
         if tracker.has_position:
             sell, reason = trade_engine.should_sell(tracker, macd_vals)
             if sell:
+                qty = tracker.position.quantity  # BUY時の株数をそのまま使う
                 entry = tracker.position.entry_price
                 hold = round(tracker.hold_minutes, 1)
-                total_pnl += (current_price - entry) * order_cfg.quantity
-                trade_log.log_exit(symbol_id, current_price, order_cfg.quantity,
+                total_pnl += (current_price - entry) * qty
+                trade_log.log_exit(symbol_id, current_price, qty,
                                     entry, hold, reason, tracker.daily_trades + 1, bar_time)
                 tracker.close_position(current_price, reason)
                 closed_trades += 1
@@ -137,9 +138,10 @@ def run_backtest(symbol_id: str, start_date: str, end_date: str,
             if in_window:
                 buy, reason = trade_engine.should_buy(tracker, macd_vals, volume_ratio)
                 if buy:
-                    trade_log.log_entry(symbol_id, current_price, order_cfg.quantity,
+                    qty = risk_mgr.compute_quantity(current_price, order_cfg.quantity)
+                    trade_log.log_entry(symbol_id, current_price, qty,
                                          tracker.gc_duration_minutes, bar_time)
-                    tracker.open_position(current_price, order_cfg.quantity, bar_time)
+                    tracker.open_position(current_price, qty, bar_time)
 
     print(f"\nバックテスト完了: {symbol_id} {start_date} 〜 {end_date}")
     print(f"確定取引数（SELL）: {closed_trades}件")

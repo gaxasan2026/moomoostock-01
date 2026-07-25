@@ -196,12 +196,12 @@ class OrderManager:
 
     # ─── 発注 ────────────────────────────────────────────────────
 
-    def place_buy_order(self, price: float) -> tuple[bool, str]:
+    def place_buy_order(self, price: float, quantity: int) -> tuple[bool, str]:
         """
         買い注文を発注する
         Returns: (成功したか, 注文IDまたはエラーメッセージ)
         """
-        qty = self.cfg.quantity
+        qty = quantity
 
         if self.cfg.mock_data:
             msg = (f"[MOCK] 買い注文: {self.symbol} {qty}株 "
@@ -241,12 +241,12 @@ class OrderManager:
             self._logger.error(f"買い注文エラー: {e}")
             return False, str(e)
 
-    def place_sell_order(self, price: float, reason: str) -> tuple[bool, str]:
+    def place_sell_order(self, price: float, reason: str, quantity: int) -> tuple[bool, str]:
         """
-        売り注文を発注する
+        売り注文を発注する（quantityは対応するBUY時の株数をそのまま渡すこと）
         Returns: (成功したか, 注文IDまたはエラーメッセージ)
         """
-        qty = self.cfg.quantity
+        qty = quantity
 
         if self.cfg.mock_data:
             msg = (f"[MOCK] 売り注文: {self.symbol} {qty}株 "
