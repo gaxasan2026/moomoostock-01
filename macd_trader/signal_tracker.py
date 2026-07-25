@@ -65,13 +65,23 @@ class SignalTracker:
         毎バー（or ティック）呼び出す。
         GC/DC継続時間とピーク価格を更新する。
         """
+        is_new_session = (
+            self.current_time is not None
+            and timestamp.date() != self.current_time.date()
+        )
+
         self.current_price = current_price
         self.current_time = timestamp
 
         is_golden = macd > signal
 
         # ─ GC/DC 状態の更新 ─
-        if is_golden:
+        if is_new_session:
+            # 取引セッションの区切り（日付変更）。夜間の市場休止をまたいで
+            # GC/DC継続時間を数え続けると無意味な値になるため、起点を当バーにリセットする。
+            self._gc_start_time = timestamp if is_golden else None
+            self._dc_start_time = None if is_golden else timestamp
+        elif is_golden:
             if not self._current_is_golden:
                 # DCからGCに転換
                 self._gc_start_time = timestamp
