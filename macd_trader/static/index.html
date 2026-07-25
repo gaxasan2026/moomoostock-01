@@ -113,6 +113,21 @@ input[type=checkbox]{width:16px;height:16px;accent-color:#58a6ff}
 .modal-save{background:#238636;border:1px solid #2ea043;color:#fff}
 .modal-save:hover{background:#2ea043}
 
+/* Screening modal */
+#screen-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:100}
+#screen-overlay.hidden{display:none}
+#screen-modal{background:#161b22;border:1px solid #30363d;border-radius:10px;width:620px;max-height:90vh;display:flex;flex-direction:column}
+textarea,input[type=date]{background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#e6edf3;padding:6px 10px;font-size:13px;width:100%;font-family:inherit;resize:vertical}
+textarea:focus,input[type=date]:focus{outline:none;border-color:#58a6ff}
+.screen-job-row{display:flex;align-items:center;gap:10px;background:#0d1117;border:1px solid #30363d;border-radius:7px;padding:10px 14px;margin-bottom:8px;font-size:13px}
+.screen-job-row .sym{font-weight:600;width:90px;flex-shrink:0}
+.screen-job-row .prog{flex:1;color:#7d8590;font-size:12px}
+.screen-job-badge{font-size:11px;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.screen-job-badge.running{background:#0e1f42;color:#4d8fe8}
+.screen-job-badge.done{background:#0a2b1a;color:#2dc47a}
+.screen-job-badge.error{background:#2e0e0a;color:#f0614a}
+.screen-job-row a{color:#58a6ff;font-size:12px;white-space:nowrap}
+
 /* Empty state */
 .empty{padding:32px;text-align:center;color:#484f58}
 
@@ -128,6 +143,7 @@ input[type=checkbox]{width:16px;height:16px;accent-color:#58a6ff}
   <h1>MACD Trader</h1>
   <span id="conn-dot"></span>
   <span id="clock"></span>
+  <button class="hbtn" onclick="openScreenModal()">🔍 銘柄スクリーニング</button>
   <button class="hbtn danger" onclick="stopAll()">全停止</button>
 </div>
 
@@ -383,6 +399,59 @@ input[type=checkbox]{width:16px;height:16px;accent-color:#58a6ff}
     <div id="modal-foot">
       <button class="modal-btn modal-cancel" onclick="closeModal()">キャンセル</button>
       <button class="modal-btn modal-save" onclick="saveSymbol()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Screening Modal -->
+<div id="screen-overlay" class="hidden" onclick="if(event.target===this)closeScreenModal()">
+  <div id="screen-modal">
+    <div id="modal-head">
+      <h2>🔍 銘柄スクリーニング</h2>
+      <button id="modal-close" onclick="closeScreenModal()">✕</button>
+    </div>
+    <div id="modal-body">
+      <div class="form-group">
+        <label>銘柄コード（複数可、カンマまたは改行区切り）</label>
+        <textarea id="screen-symbols" rows="3" placeholder="US.AAPL, US.GOOGL, US.MSFT"></textarea>
+        <span class="hint">moomoo形式: US.TICKER / HK.00700</span>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>開始日</label>
+          <select id="screen-period">
+            <option value="7">1週間前から</option>
+            <option value="30">1ヶ月前から</option>
+            <option value="90" selected>3ヶ月前から</option>
+            <option value="180">6ヶ月前から</option>
+            <option value="365">1年前から</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>終了日</label>
+          <input type="date" id="screen-end-date">
+        </div>
+        <div class="form-group">
+          <label>市場</label>
+          <select id="screen-market">
+            <option value="US">US（米国株）</option>
+            <option value="HK">HK（香港株）</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>想定元本 (USD)</label>
+          <input type="number" id="screen-position-value" value="800" step="100" min="0">
+        </div>
+      </div>
+      <div class="callout" style="background:#1a2540;border:1px solid #253045;border-radius:7px;padding:10px 14px;margin-top:8px;font-size:12.5px;color:#8a97b5">
+        💡 1銘柄あたり数分かかります（16パターンのバックテストを実行）。複数銘柄を指定した場合は並行して実行されます。
+      </div>
+
+      <div id="screen-jobs" style="margin-top:16px"></div>
+    </div>
+    <div id="modal-foot">
+      <button class="modal-btn modal-cancel" onclick="closeScreenModal()">閉じる</button>
+      <button class="modal-btn modal-save" onclick="startScreening()">スクリーニング開始</button>
     </div>
   </div>
 </div>
@@ -781,6 +850,113 @@ function showToast(msg, isErr) {
   el.className = isErr ? 'err' : '';
   clearTimeout(_toastTimer);
   _toastTimer = setTimeout(() => el.classList.add('hidden'), 3000);
+}
+
+// ─── Symbol Screening ────────────────────────────────────────────
+let screenJobs = {};       // job_id -> {symbol, status, progress, report_url, error}
+let screenPollTimer = null;
+
+function formatLocalDate(d) {
+  // toISOString()はUTCに変換するため、JSTなど+側のタイムゾーンでは
+  // 日付が1日前にずれてしまう。ローカルの年月日をそのまま使う。
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function openScreenModal() {
+  document.getElementById('screen-symbols').value = '';
+  document.getElementById('screen-jobs').innerHTML = '';
+  screenJobs = {};
+  document.getElementById('screen-end-date').value = formatLocalDate(new Date());
+  document.getElementById('overlay') && closeModal();
+  document.getElementById('screen-overlay').classList.remove('hidden');
+}
+
+function closeScreenModal() {
+  document.getElementById('screen-overlay').classList.add('hidden');
+  if (screenPollTimer) { clearInterval(screenPollTimer); screenPollTimer = null; }
+}
+
+function parseScreenSymbols() {
+  const raw = document.getElementById('screen-symbols').value;
+  const parts = raw.split(/[,\n]/).map(s => s.trim().toUpperCase()).filter(s => s.length > 0);
+  return [...new Set(parts)];
+}
+
+function computeStartDate(daysAgo, endDateStr) {
+  const end = new Date(endDateStr + 'T00:00:00');
+  const start = new Date(end);
+  start.setDate(start.getDate() - daysAgo);
+  return formatLocalDate(start);
+}
+
+async function startScreening() {
+  const syms = parseScreenSymbols();
+  if (syms.length === 0) return showToast('銘柄コードを入力してください', true);
+
+  const endDate = document.getElementById('screen-end-date').value;
+  const daysAgo = parseInt(document.getElementById('screen-period').value);
+  const startDate = computeStartDate(daysAgo, endDate);
+  const market = document.getElementById('screen-market').value;
+  const targetValue = parseFloat(document.getElementById('screen-position-value').value);
+
+  for (const sym of syms) {
+    const r = await fetch('/api/screen', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        symbol: sym, start_date: startDate, end_date: endDate,
+        market: market, target_position_value: targetValue,
+      }),
+    });
+    const d = await r.json();
+    if (!r.ok) {
+      showToast(`${sym}: ${d.error}`, true);
+      continue;
+    }
+    screenJobs[d.job_id] = {symbol: sym, status: 'running', progress: '開始しています...', report_url: null, error: null};
+  }
+  renderScreenJobs();
+  if (!screenPollTimer) {
+    screenPollTimer = setInterval(pollScreenJobs, 3000);
+  }
+  pollScreenJobs();
+}
+
+async function pollScreenJobs() {
+  const ids = Object.keys(screenJobs);
+  if (ids.length === 0) return;
+  await Promise.all(ids.map(async (jobId) => {
+    if (screenJobs[jobId].status !== 'running') return;
+    const r = await fetch(`/api/screen/${jobId}`);
+    if (!r.ok) return;
+    const d = await r.json();
+    screenJobs[jobId].status = d.status;
+    screenJobs[jobId].progress = d.progress;
+    screenJobs[jobId].report_url = d.report_url;
+    screenJobs[jobId].error = d.error;
+  }));
+  renderScreenJobs();
+}
+
+function renderScreenJobs() {
+  const container = document.getElementById('screen-jobs');
+  const rows = Object.entries(screenJobs).map(([jobId, j]) => {
+    let badge, extra;
+    if (j.status === 'running') {
+      badge = '<span class="screen-job-badge running">実行中</span>';
+      extra = `<span class="prog">${j.progress}</span>`;
+    } else if (j.status === 'done') {
+      badge = '<span class="screen-job-badge done">完了</span>';
+      extra = `<a href="${j.report_url}" target="_blank">📄 レポートを開く</a>`;
+    } else {
+      badge = '<span class="screen-job-badge error">エラー</span>';
+      extra = `<span class="prog">${j.error || ''}</span>`;
+    }
+    return `<div class="screen-job-row"><span class="sym">${j.symbol}</span>${badge}${extra}</div>`;
+  });
+  container.innerHTML = rows.join('');
 }
 
 init();

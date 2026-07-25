@@ -14,12 +14,14 @@ from flask import Flask, jsonify, request, send_from_directory
 
 from symbol_store import SymbolStore
 from bot_manager import BotManager, get_logs_since
+from screen_manager import ScreenManager
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 app = Flask(__name__, static_folder=os.path.join(BASE_DIR, "static"))
 store = SymbolStore(os.path.join(BASE_DIR, "data", "symbols.json"))
 manager = BotManager()
+screen_mgr = ScreenManager()
 
 
 # ─── Static ──────────────────────────────────────────────────────
@@ -107,6 +109,43 @@ def get_trades():
 def get_logs():
     since = int(request.args.get("since", 0))
     return jsonify(get_logs_since(since))
+
+
+# ─── Symbol Screening ──────────────────────────────────────────────
+
+@app.route("/api/screen", methods=["POST"])
+def start_screen():
+    data = request.json or {}
+    symbol = data.get("symbol", "").upper().strip()
+    start_date = data.get("start_date", "").strip()
+    end_date = data.get("end_date", "").strip()
+    market = data.get("market", "US")
+    timeframe = data.get("timeframe", "K_1M")
+    target_position_value = float(data.get("target_position_value", 800))
+
+    if not symbol or not start_date or not end_date:
+        return jsonify({"error": "symbol, start_date, end_date は必須です"}), 400
+
+    job_id = screen_mgr.start(symbol, start_date, end_date, market, timeframe, target_position_value)
+    return jsonify({"job_id": job_id}), 202
+
+
+@app.route("/api/screen/<job_id>")
+def get_screen_status(job_id):
+    job = screen_mgr.get(job_id)
+    if not job:
+        return jsonify({"error": "not found"}), 404
+    return jsonify({
+        "status": job.status,
+        "progress": job.progress,
+        "error": job.error,
+        "report_url": f"/screening-reports/{job.report_filename}" if job.report_filename else None,
+    })
+
+
+@app.route("/screening-reports/<path:filename>")
+def serve_screening_report(filename):
+    return send_from_directory(os.path.join(BASE_DIR, "logs"), filename)
 
 
 # ─── Entry Point ─────────────────────────────────────────────────

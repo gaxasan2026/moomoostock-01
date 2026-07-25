@@ -68,7 +68,12 @@ def classify_slot(t: dt_time) -> int:
 
 def run_screen(symbol_id: str, start_date: str, end_date: str,
                 market: str = "US", timeframe: str = "K_1M",
-                target_position_value: float = 800.0):
+                target_position_value: float = 800.0, on_progress=None):
+    def progress(msg):
+        print(msg)
+        if on_progress:
+            on_progress(msg)
+
     cfg_dict = load_candidate_config(symbol_id, market, timeframe, target_position_value)
     macd_cfg = MacdConfig(**cfg_dict["macd"])
     entry_cfg = EntryConfig(**{**cfg_dict["entry"], "trading_hours_start": "", "trading_hours_end": ""})
@@ -77,7 +82,7 @@ def run_screen(symbol_id: str, start_date: str, end_date: str,
     risk_cfg = RiskConfig(**cfg_dict["risk"])
     opend_cfg = OpendConfig(**cfg_dict["opend"])
 
-    print(f"過去データ取得中: {symbol_id} {timeframe} {start_date}〜{end_date} ...")
+    progress(f"過去データ取得中: {symbol_id} {timeframe} {start_date}〜{end_date} ...")
     df = _load_data(symbol_id, start_date, end_date, macd_cfg, opend_cfg)
 
     # ── ① 終日ベースラインを再生し、個別取引を記録する ──
@@ -100,7 +105,7 @@ def run_screen(symbol_id: str, start_date: str, end_date: str,
         df, macd_cfg, entry_cfg, exit_cfg, order_cfg, risk_cfg,
         on_entry=on_entry, on_exit=on_exit,
     )
-    print(f"終日ベースライン: {baseline_trades}件 / {baseline_pnl:+.2f} USD")
+    progress(f"終日ベースライン: {baseline_trades}件 / {baseline_pnl:+.2f} USD")
 
     # ── ② エントリー時刻を5時間帯に分類 ──
     slot_stats = [{"count": 0, "pnl": 0.0} for _ in SLOT_LABELS]
@@ -113,7 +118,7 @@ def run_screen(symbol_id: str, start_date: str, end_date: str,
             slot_stats[idx]["pnl"] += t["pnl"]
 
     # ── ③ 全ての連続時間帯の組み合わせ(15通り)を実際にバックテスト ──
-    print("時間帯の組み合わせを検証中（15パターン）...")
+    progress("時間帯の組み合わせを検証中（15パターン）...")
     window_results = []
     n = len(SLOT_BOUNDARIES) - 1
     for i in range(n):
@@ -153,6 +158,7 @@ def run_screen(symbol_id: str, start_date: str, end_date: str,
     out_path.write_text(html, encoding="utf-8")
     print(f"\nスクリーニングレポートを生成しました: {out_path}")
     print(f"ブラウザで開く: file://{out_path.resolve()}")
+    return out_path
 
 
 def render_html(symbol_id, start_date, end_date, cfg_dict, baseline_trades, baseline_pnl,
