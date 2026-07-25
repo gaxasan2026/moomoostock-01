@@ -851,6 +851,18 @@ code {
           </small>
         </td>
       </tr>
+      <tr>
+        <td class="pname">取引時間帯 開始／終了<br><small>(trading_hours_start / trading_hours_end)</small></td>
+        <td class="pdefault">空欄<br>（制限なし）</td>
+        <td class="pdesc">
+          新規エントリーを許可する時刻の範囲（"HH:MM"形式）。この時間帯以外はGC条件を満たしていてもエントリーしない。<strong>既存ポジションの決済判定はこの設定の影響を受けない</strong>
+          <small>
+            空欄 = 時間帯制限なし（従来通り終日エントリー可）<br>
+            バックテストで「オープニングラッシュ（9:30-10:00）を除外すると成績が大幅改善する」ことが確認された銘柄では、開始を10:00に設定するなど<br>
+            <span class="range">設定前に必ずバックテストで効果を確認すること</span>
+          </small>
+        </td>
+      </tr>
     </tbody>
   </table>
   </div>

@@ -3,6 +3,7 @@ trade_engine.py
 エントリー・エグジット条件をYAML設定に基づいて評価する
 """
 import logging
+from datetime import datetime
 from config_loader import EntryConfig, ExitConfig
 from signal_tracker import SignalTracker
 from risk_manager import RiskManager
@@ -28,6 +29,17 @@ class TradeEngine:
         """
         if tracker.has_position:
             return False, "既にポジションあり"
+
+        # 取引時間帯フィルター
+        if self.entry.trading_hours_start and self.entry.trading_hours_end:
+            start_t = datetime.strptime(self.entry.trading_hours_start, "%H:%M").time()
+            end_t = datetime.strptime(self.entry.trading_hours_end, "%H:%M").time()
+            current_t = tracker.current_time.time()
+            if not (start_t <= current_t < end_t):
+                return False, (
+                    f"取引時間帯外 ({current_t.strftime('%H:%M')}, "
+                    f"対象: {self.entry.trading_hours_start}-{self.entry.trading_hours_end})"
+                )
 
         # リスクチェック
         ok, reason = self.risk.can_trade(tracker)

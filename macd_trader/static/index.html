@@ -287,6 +287,16 @@ input[type=checkbox]{width:16px;height:16px;accent-color:#58a6ff}
             <input type="number" id="f-spread" value="0.1" step="0.01" min="0">
             <span class="hint">0 で無効</span>
           </div>
+          <div class="form-group">
+            <label>取引時間帯 開始</label>
+            <input type="time" id="f-hours-start" value="">
+            <span class="hint">空欄で時間帯制限なし</span>
+          </div>
+          <div class="form-group">
+            <label>取引時間帯 終了</label>
+            <input type="time" id="f-hours-end" value="">
+            <span class="hint">空欄で時間帯制限なし</span>
+          </div>
         </div>
       </div>
 
@@ -626,6 +636,8 @@ function resetForm() {
   document.getElementById('f-hist-min').value = '0.0';
   document.getElementById('f-vol-ratio').value = '1.0';
   document.getElementById('f-spread').value = '0.1';
+  document.getElementById('f-hours-start').value = '';
+  document.getElementById('f-hours-end').value = '';
   document.getElementById('f-peak-drop').value = '1.5';
   document.getElementById('f-peak-dur').value = '5.0';
   document.getElementById('f-peak-bars').value = '3';
@@ -661,6 +673,8 @@ function fillForm(cfg) {
   document.getElementById('f-hist-min').value = en.macd_histogram_min ?? 0.0;
   document.getElementById('f-vol-ratio').value = en.volume_surge_ratio ?? 1.0;
   document.getElementById('f-spread').value = en.max_spread_pct ?? 0.1;
+  document.getElementById('f-hours-start').value = en.trading_hours_start || '';
+  document.getElementById('f-hours-end').value = en.trading_hours_end || '';
   const ex = cfg.exit || {};
   document.getElementById('f-peak-drop').value = ex.peak_drop_pct ?? 1.5;
   document.getElementById('f-peak-dur').value = ex.peak_drop_duration_minutes ?? 5.0;
@@ -695,6 +709,8 @@ function getFormData() {
       macd_histogram_min: parseFloat(document.getElementById('f-hist-min').value),
       volume_surge_ratio: parseFloat(document.getElementById('f-vol-ratio').value),
       max_spread_pct: parseFloat(document.getElementById('f-spread').value),
+      trading_hours_start: document.getElementById('f-hours-start').value,
+      trading_hours_end: document.getElementById('f-hours-end').value,
     },
     exit: {
       peak_drop_pct: parseFloat(document.getElementById('f-peak-drop').value),

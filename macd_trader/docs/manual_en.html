@@ -376,6 +376,10 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
         <td class="pname">最大スプレッド<br><small>(max_spread_pct)</small></td><td class="pdefault">0.1</td>
         <td class="pdesc">Maximum allowed spread (high − low, as %) at entry time. Wide spread = low liquidity = poor fills.<small>Normal for liquid US large-cap: 0.05–0.1%<br><span class="range">Recommended: 0.05–0.2%</span></small></td>
       </tr>
+      <tr>
+        <td class="pname">取引時間帯 開始／終了<br><small>(trading_hours_start / trading_hours_end)</small></td><td class="pdefault">blank<br>(unrestricted)</td>
+        <td class="pdesc">Clock-time window ("HH:MM") during which new entries are allowed. Outside this window, no new position is opened even if GC conditions are met. <strong>Existing positions are always managed regardless of this setting</strong> — it only gates new entries.<small>Blank = no time restriction (entries allowed all day, as before)<br>If a backtest shows a symbol performs much better excluding the opening rush (9:30–10:00), setting the start to 10:00 is one way to apply that finding<br><span class="range">Always confirm the effect with a backtest before setting this in production</span></small></td>
+      </tr>
     </tbody>
   </table>
   </div>

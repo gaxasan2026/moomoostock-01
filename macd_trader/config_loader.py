@@ -21,6 +21,8 @@ class EntryConfig:
     macd_histogram_min: float = 0.0
     volume_surge_ratio: float = 1.0
     max_spread_pct: float = 0.1
+    trading_hours_start: str = ""  # "HH:MM"形式。空文字なら時間帯制限なし
+    trading_hours_end: str = ""    # "HH:MM"形式。空文字なら時間帯制限なし
 
 
 @dataclass

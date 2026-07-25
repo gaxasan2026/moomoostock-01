@@ -13,7 +13,9 @@
         "gc_duration_minutes": 3,
         "macd_histogram_min": 0.0,
         "volume_surge_ratio": 1.0,
-        "max_spread_pct": 0.1
+        "max_spread_pct": 0.1,
+        "trading_hours_start": "",
+        "trading_hours_end": ""
       },
       "exit": {
         "peak_drop_pct": 1.5,
