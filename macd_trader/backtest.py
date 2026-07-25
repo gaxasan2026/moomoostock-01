@@ -85,6 +85,12 @@ def run_backtest(symbol_id: str, start_date: str, end_date: str,
     hours_suffix = ""
     if hours_filter is not None:
         hours_suffix = f"_{hours_filter[0].strftime('%H%M')}-{hours_filter[1].strftime('%H%M')}"
+    elif entry_cfg.trading_hours_start and entry_cfg.trading_hours_end:
+        # symbols.json側のtrading_hours設定が有効な場合も、無制限時のファイルと
+        # 混同しないよう出力ファイル名にサフィックスを付ける
+        s = entry_cfg.trading_hours_start.replace(":", "")
+        e = entry_cfg.trading_hours_end.replace(":", "")
+        hours_suffix = f"_cfg{s}-{e}"
     out_path = BASE_DIR / "logs" / f"backtest_{safe}_{start_date}_{end_date}{hours_suffix}.csv"
     out_path.unlink(missing_ok=True)  # バックテストは決定論的な再生のため、毎回上書きする（追記しない）
     trade_log = TradeLogger(str(out_path), enabled=True)
