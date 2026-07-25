@@ -81,6 +81,10 @@ class SignalTracker:
             # GC/DC継続時間を数え続けると無意味な値になるため、起点を当バーにリセットする。
             self._gc_start_time = timestamp if is_golden else None
             self._dc_start_time = None if is_golden else timestamp
+            # 日次取引回数・日次損益カウンターもリセットする
+            # （max_daily_trades/max_daily_loss_pctが複数日にまたがって
+            # 累積し続けると、2日目以降の取引が意図せず抑制されるため）
+            self.reset_daily()
         elif is_golden:
             if not self._current_is_golden:
                 # DCからGCに転換
