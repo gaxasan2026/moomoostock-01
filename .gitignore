@@ -6,6 +6,7 @@ OpenD/
 
 # ── 実行時データ ──────────────────────────────────────────────
 macd_trader/data/symbols.json
+macd_trader/data/history/
 macd_trader/logs/
 
 # ── Python ────────────────────────────────────────────────────
