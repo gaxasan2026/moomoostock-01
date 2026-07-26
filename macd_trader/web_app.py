@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from flask import Flask, jsonify, request, send_from_directory
 
-from symbol_store import SymbolStore
+from symbol_store import SymbolStore, DEFAULT_CONFIG
 from bot_manager import BotManager, get_logs_since
 from screen_manager import ScreenManager
 
@@ -57,6 +57,9 @@ def get_symbol(symbol_id):
 
 @app.route("/api/symbols/<symbol_id>", methods=["PUT"])
 def update_symbol(symbol_id):
+    s = manager.get_state(symbol_id)
+    if s and s.running:
+        return jsonify({"error": "ボットを停止してから編集してください"}), 400
     cfg = store.update(symbol_id, request.json or {})
     return jsonify(cfg) if cfg else (jsonify({"error": "not found"}), 404)
 
@@ -103,6 +106,11 @@ def get_status():
 @app.route("/api/trades")
 def get_trades():
     return jsonify(manager.all_trades())
+
+
+@app.route("/api/defaults")
+def get_defaults():
+    return jsonify(DEFAULT_CONFIG)
 
 
 @app.route("/api/logs")
