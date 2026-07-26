@@ -33,7 +33,8 @@ def _post_to_discord(webhook_url: str, content: str):
     payload = json.dumps({"content": content}).encode("utf-8")
     req = urllib.request.Request(
         webhook_url, data=payload,
-        headers={"Content-Type": "application/json"},
+        # urllibのデフォルトUser-Agentは、DiscordのWAF（Cloudflare）にbotとしてブロックされる（403 error code 1010）
+        headers={"Content-Type": "application/json", "User-Agent": "MacdTrader-DiscordNotifier/1.0"},
         method="POST",
     )
     urllib.request.urlopen(req, timeout=5)
