@@ -20,6 +20,7 @@ from signal_tracker import SignalTracker
 from trade_engine import TradeEngine
 from order_manager import OrderManager
 from risk_manager import RiskManager
+from discord_notifier import notify_trade
 from trade_logger import TradeLogger
 
 # ─── グローバルログストア（ポーリング用） ────────────────────────
@@ -245,6 +246,8 @@ def _bot_loop(symbol_id: str, cfg_dict: dict, state: BotState):
                                            entry, hold, reason, tracker.daily_trades + 1, now)
                         tracker.close_position(current_price, reason)
                         logger.info(f"[{symbol_id}] SELL @ {current_price:.4f} | {reason} | PnL {pnl:+.2f}USD")
+                        notify_trade(symbol_id, "SELL", current_price, qty,
+                                    reason=reason, pnl=pnl, pnl_pct=pnl_pct)
                 elif action == "buy":
                     qty = risk_mgr.compute_quantity(current_price, cfg.order.quantity)
                     ok, _ = order_mgr.place_buy_order(current_price, qty)
@@ -262,6 +265,7 @@ def _bot_loop(symbol_id: str, cfg_dict: dict, state: BotState):
                                             tracker.gc_duration_minutes, now)
                         tracker.open_position(current_price, qty, bar_time)
                         logger.info(f"[{symbol_id}] BUY @ {current_price:.4f} | GC {tracker.gc_duration_minutes:.1f}分 | {qty}株")
+                        notify_trade(symbol_id, "BUY", current_price, qty, reason=reason)
 
             time.sleep(5)
 
