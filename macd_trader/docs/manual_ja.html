@@ -414,6 +414,7 @@ code {
     <a href="#symbols">銘柄管理</a>
     <a href="#botcontrol">ボット操作</a>
     <a href="#report">取引後レポート</a>
+    <a href="#notify">Discord通知</a>
   </div>
   <div class="sidebar-section">
     <div class="sidebar-label">設定値ガイド</div>
@@ -647,6 +648,38 @@ code {
   <div class="callout pro">
     <span class="callout-icon">🧪</span>
     <div class="callout-body">Paper Tradingで2週間待たずに過去データでパラメータを検証したい場合は、<a href="backtest_manual_ja.html">バックテストマニュアル</a>を参照してください。</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="notify">
+  <h2>Discord通知</h2>
+  <p>無人稼働中（例: Mac miniで放置運用）でも、BUY・SELLが発生した瞬間にDiscordへ通知を送れます。Web GUIを常時見ている必要がなくなります。</p>
+
+  <h3>セットアップ</h3>
+  <ol style="margin:8px 0 0 20px;font-size:14px;color:var(--text2);line-height:1.9">
+    <li>Discord側で通知を受けたいチャンネルの「連携サービス」→「Webhookを作成」でWebhook URLを発行する</li>
+    <li><code>macd_trader/data/notification_config.example.json</code> を同じフォルダに <code>notification_config.json</code> としてコピーする</li>
+    <li><code>webhook_url</code> に発行したURLを貼り付け、<code>enabled</code> を <code>true</code> にする</li>
+    <li>Web GUIを再起動する（<code>notification_config.json</code> は起動時に読み込まれる設定ファイルではなく通知のたびに読み込まれるため、実は再起動不要だが、確実に反映させたい場合は再起動する）</li>
+  </ol>
+
+  <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
+    {<br>
+    &nbsp;&nbsp;"enabled": true,<br>
+    &nbsp;&nbsp;"webhook_url": "https://discord.com/api/webhooks/xxxxx/xxxxx"<br>
+    }
+  </div>
+
+  <h3>通知される内容</h3>
+  <ul style="margin:8px 0 0 20px;font-size:14px;color:var(--text2);line-height:1.8">
+    <li><strong>BUY時</strong>: 銘柄・株数・約定価格・エントリー理由</li>
+    <li><strong>SELL時</strong>: 銘柄・株数・約定価格・損益（USD・%）・決済理由</li>
+  </ul>
+
+  <div class="callout tip">
+    <span class="callout-icon">🔒</span>
+    <div class="callout-body"><strong>セキュリティ設計。</strong> Webhook URLは <code>notification_config.json</code>（Git管理外）にのみ保存され、リポジトリにコミットされることはありません。通知内容には口座番号・残高等は一切含まれません。DiscordのWebhookは送信専用のため、これ経由でボットや口座に外部から侵入することはできません。通知の送信に失敗しても例外は握りつぶされ、取引処理には影響しません。</div>
   </div>
 </section>
 

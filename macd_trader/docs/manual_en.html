@@ -102,6 +102,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
     <a href="#symbols">Symbols</a>
     <a href="#botcontrol">Bot Control</a>
     <a href="#report">Post-Market Report</a>
+    <a href="#notify">Discord Notifications</a>
   </div>
   <div>
     <div class="sidebar-label">Configuration</div>
@@ -308,6 +309,37 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
   <div class="callout pro">
     <span class="callout-icon">🧪</span>
     <div class="callout-body">To validate parameters against historical data instead of waiting two weeks of Paper Trading, see the <a href="backtest_manual_en.html">Backtest Manual</a>.</div>
+  </div>
+</section>
+
+<section id="notify">
+  <h2>Discord Notifications</h2>
+  <p>When running unattended (e.g. a Mac mini left running), you can get a Discord notification the instant a BUY or SELL happens, without needing to keep the web GUI open.</p>
+
+  <h3>Setup</h3>
+  <ol style="margin:8px 0 0 20px;font-size:14px;color:var(--text2);line-height:1.9">
+    <li>In Discord, open the channel where you want notifications, go to Integrations → Create Webhook, and copy the Webhook URL</li>
+    <li>Copy <code>macd_trader/data/notification_config.example.json</code> to <code>notification_config.json</code> in the same folder</li>
+    <li>Paste your Webhook URL into <code>webhook_url</code> and set <code>enabled</code> to <code>true</code></li>
+    <li>Restart the web GUI (not strictly required — the file is re-read on every notification, not only at startup — but restarting guarantees the change is picked up)</li>
+  </ol>
+
+  <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
+    {<br>
+    &nbsp;&nbsp;"enabled": true,<br>
+    &nbsp;&nbsp;"webhook_url": "https://discord.com/api/webhooks/xxxxx/xxxxx"<br>
+    }
+  </div>
+
+  <h3>What gets sent</h3>
+  <ul style="margin:8px 0 0 20px;font-size:14px;color:var(--text2);line-height:1.8">
+    <li><strong>On BUY</strong>: symbol, quantity, fill price, entry reason</li>
+    <li><strong>On SELL</strong>: symbol, quantity, fill price, PnL (USD and %), exit reason</li>
+  </ul>
+
+  <div class="callout tip">
+    <span class="callout-icon">🔒</span>
+    <div class="callout-body"><strong>Security design.</strong> The Webhook URL lives only in <code>notification_config.json</code>, which is excluded from Git and never committed. Notification content never includes account numbers, balances, or other account details. Discord webhooks are write-only — they cannot be used to read data back out or as an entry point into the bot or your account. If a notification fails to send, the exception is caught and logged; it never blocks trade execution.</div>
   </div>
 </section>
 
