@@ -22,7 +22,7 @@ class TradeEngine:
     # ─── エントリー判定 ──────────────────────────────────────────
 
     def should_buy(self, tracker: SignalTracker, macd_vals: MacdValues,
-                   volume_ratio: float = 1.0) -> tuple[bool, str]:
+                   volume_ratio: float = 1.0, kdj_vals=None) -> tuple[bool, str]:
         """
         買いエントリー条件を全てチェックする
         Returns: (買うべきか, 理由/状況メッセージ)
@@ -65,6 +65,13 @@ class TradeEngine:
         if self.entry.volume_surge_ratio > 1.0:
             if volume_ratio < self.entry.volume_surge_ratio:
                 return False, f"出来高不足 ({volume_ratio:.2f}x < {self.entry.volume_surge_ratio}x)"
+
+        # KDJ追加確認フィルター（売られすぎ圏からの回復のみエントリー許可）
+        if self.entry.kdj_max_d > 0 and kdj_vals is not None:
+            if kdj_vals.d >= self.entry.kdj_max_d:
+                return False, f"KDJ %D高すぎ ({kdj_vals.d:.1f} >= {self.entry.kdj_max_d})"
+            if kdj_vals.k <= kdj_vals.d:
+                return False, f"KDJ未転換 (%K {kdj_vals.k:.1f} <= %D {kdj_vals.d:.1f})"
 
         return True, f"GC継続 {tracker.gc_duration_minutes:.1f}分"
 

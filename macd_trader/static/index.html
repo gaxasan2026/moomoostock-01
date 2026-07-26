@@ -313,6 +313,11 @@ textarea:focus,input[type=date]:focus{outline:none;border-color:#58a6ff}
             <input type="time" id="f-hours-end" value="">
             <span class="hint">空欄で時間帯制限なし</span>
           </div>
+          <div class="form-group">
+            <label>KDJ %D上限</label>
+            <input type="number" id="f-kdj-max-d" value="0" step="5" min="0" max="100">
+            <span class="hint">0で無効。設定するとKDJ %Dがこの値未満かつ%K&gt;%Dの時のみエントリー</span>
+          </div>
         </div>
       </div>
 
@@ -707,6 +712,7 @@ function resetForm() {
   document.getElementById('f-spread').value = '0.1';
   document.getElementById('f-hours-start').value = '';
   document.getElementById('f-hours-end').value = '';
+  document.getElementById('f-kdj-max-d').value = '0';
   document.getElementById('f-peak-drop').value = '1.5';
   document.getElementById('f-peak-dur').value = '5.0';
   document.getElementById('f-peak-bars').value = '3';
@@ -744,6 +750,7 @@ function fillForm(cfg) {
   document.getElementById('f-spread').value = en.max_spread_pct ?? 0.1;
   document.getElementById('f-hours-start').value = en.trading_hours_start || '';
   document.getElementById('f-hours-end').value = en.trading_hours_end || '';
+  document.getElementById('f-kdj-max-d').value = en.kdj_max_d ?? 0;
   const ex = cfg.exit || {};
   document.getElementById('f-peak-drop').value = ex.peak_drop_pct ?? 1.5;
   document.getElementById('f-peak-dur').value = ex.peak_drop_duration_minutes ?? 5.0;
@@ -780,6 +787,7 @@ function getFormData() {
       max_spread_pct: parseFloat(document.getElementById('f-spread').value),
       trading_hours_start: document.getElementById('f-hours-start').value,
       trading_hours_end: document.getElementById('f-hours-end').value,
+      kdj_max_d: parseFloat(document.getElementById('f-kdj-max-d').value),
     },
     exit: {
       peak_drop_pct: parseFloat(document.getElementById('f-peak-drop').value),

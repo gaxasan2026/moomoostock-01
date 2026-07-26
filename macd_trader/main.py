@@ -12,6 +12,7 @@ from datetime import datetime
 
 from config_loader import load_config
 from macd_engine import MacdEngine
+from kdj_engine import KdjEngine
 from signal_tracker import SignalTracker
 from trade_engine import TradeEngine
 from order_manager import OrderManager
@@ -70,6 +71,7 @@ def main(config_path: str):
         slow=cfg.macd.slow_period,
         signal=cfg.macd.signal_period,
     )
+    kdj_engine = KdjEngine()
     tracker = SignalTracker(
         peak_confirmation_bars=cfg.exit.peak_confirmation_bars
     )
@@ -105,6 +107,10 @@ def main(config_path: str):
             # MACD計算
             df = macd_engine.calculate(df)
             macd_vals = macd_engine.get_latest(df)
+            kdj_vals = None
+            if cfg.entry.kdj_max_d > 0:
+                kdj_df = kdj_engine.calculate(df)
+                kdj_vals = kdj_engine.get_latest(kdj_df)
 
             # 新しいバーが来た場合のみ処理（重複実行防止）
             current_bar_time = df["time_key"].iloc[-1] if "time_key" in df.columns else datetime.now()
@@ -162,7 +168,7 @@ def main(config_path: str):
 
                 # ── ポジションなし → 買い判定 ──
                 else:
-                    buy, reason = trade_engine.should_buy(tracker, macd_vals, volume_ratio)
+                    buy, reason = trade_engine.should_buy(tracker, macd_vals, volume_ratio, kdj_vals)
                     if buy:
                         qty = risk_mgr.compute_quantity(current_price, cfg.order.quantity)
                         ok, order_id = order_mgr.place_buy_order(current_price, qty)

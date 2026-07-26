@@ -23,6 +23,9 @@ class EntryConfig:
     max_spread_pct: float = 0.1
     trading_hours_start: str = ""  # "HH:MM"形式。空文字なら時間帯制限なし
     trading_hours_end: str = ""    # "HH:MM"形式。空文字なら時間帯制限なし
+    kdj_max_d: float = 0.0  # KDJ追加確認フィルター。0で無効。
+                            # >0の場合、エントリー時にKDJの%Dがこの値未満（売られすぎ圏からの回復）
+                            # かつ %K > %D（上向き転換）であることも要求する
 
 
 @dataclass

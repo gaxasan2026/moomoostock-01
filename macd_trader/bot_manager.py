@@ -14,6 +14,7 @@ from config_loader import (
     OrderConfig, RiskConfig, LoggingConfig, OpendConfig,
 )
 from macd_engine import MacdEngine
+from kdj_engine import KdjEngine
 from signal_tracker import SignalTracker
 from trade_engine import TradeEngine
 from order_manager import OrderManager
@@ -159,6 +160,7 @@ def _bot_loop(symbol_id: str, cfg_dict: dict, state: BotState):
         logger.info(f"[{symbol_id}] 起動 paper={cfg.order.paper_trading}")
 
         macd_engine = MacdEngine(cfg.macd.fast_period, cfg.macd.slow_period, cfg.macd.signal_period)
+        kdj_engine = KdjEngine()
         tracker = SignalTracker(peak_confirmation_bars=cfg.exit.peak_confirmation_bars)
         risk_mgr = RiskManager(cfg.risk)
         trade_engine = TradeEngine(cfg.entry, cfg.exit, risk_mgr)
@@ -190,6 +192,10 @@ def _bot_loop(symbol_id: str, cfg_dict: dict, state: BotState):
 
             df = macd_engine.calculate(df)
             macd_vals = macd_engine.get_latest(df)
+            kdj_vals = None
+            if cfg.entry.kdj_max_d > 0:
+                kdj_df = kdj_engine.calculate(df)
+                kdj_vals = kdj_engine.get_latest(kdj_df)
 
             current_bar_time = df["time_key"].iloc[-1]
             if hasattr(current_bar_time, "to_pydatetime"):
@@ -255,7 +261,7 @@ def _bot_loop(symbol_id: str, cfg_dict: dict, state: BotState):
                             tracker.close_position(current_price, reason)
                             logger.info(f"[{symbol_id}] SELL @ {current_price:.4f} | {reason} | PnL {pnl:+.2f}USD")
                 else:
-                    buy, reason = trade_engine.should_buy(tracker, macd_vals, volume_ratio)
+                    buy, reason = trade_engine.should_buy(tracker, macd_vals, volume_ratio, kdj_vals)
                     if buy:
                         qty = risk_mgr.compute_quantity(current_price, cfg.order.quantity)
                         ok, _ = order_mgr.place_buy_order(current_price, qty)

@@ -34,6 +34,7 @@ sys.path.insert(0, str(BASE_DIR))
 
 from config_loader import MacdConfig, EntryConfig, ExitConfig, OrderConfig, RiskConfig, OpendConfig
 from macd_engine import MacdEngine
+from kdj_engine import KdjEngine
 from signal_tracker import SignalTracker
 from trade_engine import TradeEngine
 from risk_manager import RiskManager
@@ -84,6 +85,7 @@ def _replay(df: pd.DataFrame, macd_cfg: MacdConfig, entry_cfg: EntryConfig,
     Returns: (確定取引数, 合計損益)
     """
     macd_engine = MacdEngine(macd_cfg.fast_period, macd_cfg.slow_period, macd_cfg.signal_period)
+    kdj_engine = KdjEngine()
     tracker = SignalTracker(peak_confirmation_bars=exit_cfg.peak_confirmation_bars)
     risk_mgr = RiskManager(risk_cfg)
     trade_engine = TradeEngine(entry_cfg, exit_cfg, risk_mgr)
@@ -96,6 +98,10 @@ def _replay(df: pd.DataFrame, macd_cfg: MacdConfig, entry_cfg: EntryConfig,
         window = df.iloc[i - KLINE_WINDOW:i]
         window = macd_engine.calculate(window)
         macd_vals = macd_engine.get_latest(window)
+        kdj_vals = None
+        if entry_cfg.kdj_max_d > 0:
+            kdj_window = kdj_engine.calculate(window)
+            kdj_vals = kdj_engine.get_latest(kdj_window)
 
         current_price = float(window["close"].iloc[-1])
         bar_time = window["time_key"].iloc[-1]
@@ -131,7 +137,7 @@ def _replay(df: pd.DataFrame, macd_cfg: MacdConfig, entry_cfg: EntryConfig,
                 or hours_filter[0] <= bar_time.time() < hours_filter[1]
             )
             if in_window:
-                buy, reason = trade_engine.should_buy(tracker, macd_vals, volume_ratio)
+                buy, reason = trade_engine.should_buy(tracker, macd_vals, volume_ratio, kdj_vals)
                 if buy:
                     qty = risk_mgr.compute_quantity(current_price, order_cfg.quantity)
                     if on_entry:
