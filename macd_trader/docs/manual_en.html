@@ -385,6 +385,10 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
         <td class="pname">取引時間帯 開始／終了<br><small>(trading_hours_start / trading_hours_end)</small></td><td class="pdefault">blank<br>(unrestricted)</td>
         <td class="pdesc">Clock-time window ("HH:MM") during which new entries are allowed. Outside this window, no new position is opened even if GC conditions are met. <strong>Existing positions are always managed regardless of this setting</strong> — it only gates new entries.<small>Blank = no time restriction (entries allowed all day, as before)<br>If a backtest shows a symbol performs much better excluding the opening rush (9:30–10:00), setting the start to 10:00 is one way to apply that finding<br><span class="range">Always confirm the effect with a backtest before setting this in production</span></small></td>
       </tr>
+      <tr>
+        <td class="pname">KDJ %D上限<br><small>(kdj_max_d)</small></td><td class="pdefault">0<br>(disabled)</td>
+        <td class="pdesc">Requires an additional KDJ (stochastic-family) confirmation on top of the MACD golden cross. When set, an entry is only allowed if KDJ's %D is below this value (i.e. still recovering from an oversold zone) and %K &gt; %D (a bullish KDJ turn).<small>0 = disabled (MACD alone decides, as before)<br>80 = a loose filter that barely restricts entries (shown effective for some symbols)<br>20–50 = a stricter filter (can make results worse for some symbols)<br><span class="range">Effectiveness varies a lot by symbol — always verify with a backtest per symbol before setting this</span></small></td>
+      </tr>
     </tbody>
   </table>
   </div>

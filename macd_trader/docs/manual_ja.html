@@ -868,6 +868,19 @@ code {
           </small>
         </td>
       </tr>
+      <tr>
+        <td class="pname">KDJ %D上限<br><small>(kdj_max_d)</small></td>
+        <td class="pdefault">0<br>（無効）</td>
+        <td class="pdesc">
+          MACDのゴールデンクロスに加えて、KDJ指標（ストキャスティクス系）による追加確認を要求する。設定すると、KDJの%Dがこの値未満（＝売られすぎ圏からの回復途中）かつ%K&gt;%D（＝上向きに転換）の場合のみエントリーを許可する
+          <small>
+            0 = 無効（MACDのみで判断、従来通り）<br>
+            80 = ほぼ絞り込まない緩いフィルター（一部銘柄で有効性を確認済み）<br>
+            20〜50 = 厳しめのフィルター（銘柄によっては悪化する場合がある）<br>
+            <span class="range">効果は銘柄ごとに大きく異なる。必ずバックテストで個別検証してから設定すること</span>
+          </small>
+        </td>
+      </tr>
     </tbody>
   </table>
   </div>
