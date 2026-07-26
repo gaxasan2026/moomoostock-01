@@ -8,10 +8,17 @@ backtest.py
     python3 backtest.py US.MU 2026-07-01 2026-07-24 09:30-10:00   # 指定時間帯のみエントリー対象にする
     python3 backtest.py US.MU 2026-07-01 2026-07-24 --sweep gc_duration_minutes 3,5,7,10,15
         # entryの1パラメータを複数の値で試し、結果を一覧表示する（symbols.jsonは変更しない）
+    python3 backtest.py US.MU 2026-07-01 2026-07-24 --grid gc_duration_minutes=3,5,7 macd_histogram_min=0,0.002,0.005
+        # entryの複数パラメータを総当たりで組み合わせ、合計損益の降順で一覧表示する（symbols.jsonは変更しない）
 
 出力:
     logs/backtest_<SYMBOL>_<開始日>_<終了日>[_<時刻>].csv （trade_logger.py と同じCSV形式）
-    --sweep 使用時はCSV出力なし（コンソールに一覧のみ表示）
+    --sweep / --grid 使用時はCSV出力なし（コンソールに一覧のみ表示）
+
+注意（--grid）:
+    パラメータ間には逐次依存性（クールダウン・ピーク追跡等）があるため、組み合わせた結果は
+    各パラメータを個別に--sweepした結果の単純な足し算にはならない（非線形効果が生じうる）。
+    組み合わせ数はパラメータ数・値の数に応じて指数的に増えるため、値の候補は絞り込んでから使うこと。
 
 注意:
     ライブ運用では OpenD から5秒ごとにポーリングし、確定していない当該バーの
@@ -23,6 +30,7 @@ backtest.py
 from __future__ import annotations
 
 import dataclasses
+import itertools
 import sys
 from datetime import time as dt_time
 from pathlib import Path
@@ -212,13 +220,80 @@ def run_sweep(symbol_id: str, start_date: str, end_date: str,
         print(f"{value!s:>10} {closed_trades:>8} {total_pnl:>+14.2f}")
 
 
+def parse_grid_args(tokens: list[str]) -> dict[str, list[str]]:
+    """['gc_duration_minutes=3,5,7', 'macd_histogram_min=0,0.002'] のような
+    'パラメータ名=値1,値2,...' のリストを {パラメータ名: [値, ...]} に変換する"""
+    grid_spec: dict[str, list[str]] = {}
+    for token in tokens:
+        if "=" not in token:
+            raise SystemExit(f"--grid の引数は パラメータ名=値1,値2,... の形式で指定してください: {token}")
+        name, raw_values = token.split("=", 1)
+        grid_spec[name] = raw_values.split(",")
+    return grid_spec
+
+
+def run_grid(symbol_id: str, start_date: str, end_date: str,
+             grid_spec: dict[str, list[str]],
+             hours_filter: tuple[dt_time, dt_time] | None = None):
+    """
+    entryの複数パラメータを総当たりで組み合わせて試し、合計損益の降順で一覧表示する。
+    symbols.jsonは一切変更しない（メモリ上でEntryConfigを複製して差し替えるだけ）。
+    """
+    cfg_dict = load_symbol_config(symbol_id)
+    macd_cfg = MacdConfig(**cfg_dict["macd"])
+    base_entry_cfg = EntryConfig(**cfg_dict["entry"])
+    exit_cfg = ExitConfig(**cfg_dict["exit"])
+    order_cfg = OrderConfig(**cfg_dict["order"])
+    risk_cfg = RiskConfig(**cfg_dict["risk"])
+    opend_cfg = OpendConfig(**cfg_dict["opend"])
+
+    for name in grid_spec:
+        if not hasattr(base_entry_cfg, name):
+            raise SystemExit(f"エントリー設定に存在しないパラメータです: {name}")
+
+    df = _load_data(symbol_id, start_date, end_date, macd_cfg, opend_cfg)
+
+    # 型はdataclassの型注釈から取得する（--sweepと同じ理由。JSON上0.0が整数0として読まれる場合があるため）
+    field_types = {f.name: f.type for f in dataclasses.fields(base_entry_cfg)}
+    param_names = list(grid_spec.keys())
+    value_lists = [
+        [raw if field_types[name] is bool else field_types[name](raw) for raw in grid_spec[name]]
+        for name in param_names
+    ]
+    combos = list(itertools.product(*value_lists))
+
+    print(f"\n=== グリッドサーチ: {symbol_id} / {', '.join(param_names)} ===")
+    print(f"期間: {start_date} 〜 {end_date}" + (f" / 時間帯: {hours_filter[0]}-{hours_filter[1]}" if hours_filter else ""))
+    print(f"組み合わせ数: {len(combos)}件\n")
+
+    results = []
+    for combo in combos:
+        overrides = dict(zip(param_names, combo))
+        entry_cfg = dataclasses.replace(base_entry_cfg, **overrides)
+        closed_trades, total_pnl = _replay(
+            df, macd_cfg, entry_cfg, exit_cfg, order_cfg, risk_cfg, hours_filter=hours_filter,
+        )
+        results.append((overrides, closed_trades, total_pnl))
+
+    results.sort(key=lambda r: r[2], reverse=True)  # 合計損益の降順（最良の組み合わせが上位に来る）
+
+    col_widths = [max(len(name), 10) + 2 for name in param_names]
+    header = "".join(f"{name:>{w}}" for name, w in zip(param_names, col_widths)) + f"{'取引数':>8} {'合計損益(USD)':>14}"
+    print(header)
+    for overrides, closed_trades, total_pnl in results:
+        row = "".join(f"{overrides[name]!s:>{w}}" for name, w in zip(param_names, col_widths))
+        print(f"{row}{closed_trades:>8} {total_pnl:>+14.2f}")
+
+
 def main():
     if len(sys.argv) < 4:
         print("使い方: python3 backtest.py <SYMBOL> <開始日> <終了日> [開始時刻-終了時刻]")
         print("        python3 backtest.py <SYMBOL> <開始日> <終了日> --sweep <パラメータ名> <値1,値2,...> [開始時刻-終了時刻]")
+        print("        python3 backtest.py <SYMBOL> <開始日> <終了日> --grid <パラメータ名=値1,値2,...> [パラメータ名=... ...] [開始時刻-終了時刻]")
         print("例:     python3 backtest.py US.MU 2026-07-01 2026-07-24")
         print("例:     python3 backtest.py US.MU 2026-07-01 2026-07-24 09:30-10:00")
         print("例:     python3 backtest.py US.MU 2026-07-01 2026-07-24 --sweep gc_duration_minutes 3,5,7,10,15")
+        print("例:     python3 backtest.py US.MU 2026-07-01 2026-07-24 --grid gc_duration_minutes=3,5,7 macd_histogram_min=0,0.002,0.005")
         sys.exit(1)
     symbol_id = sys.argv[1].upper()
     start_date, end_date = sys.argv[2], sys.argv[3]
@@ -231,6 +306,19 @@ def main():
         values = sys.argv[6].split(",")
         hours_filter = parse_hours_arg(sys.argv[7]) if len(sys.argv) > 7 else None
         run_sweep(symbol_id, start_date, end_date, param_name, values, hours_filter)
+    elif len(sys.argv) > 4 and sys.argv[4] == "--grid":
+        rest = sys.argv[5:]
+        if not rest:
+            print("使い方: python3 backtest.py <SYMBOL> <開始日> <終了日> --grid <パラメータ名=値1,値2,...> [パラメータ名=... ...] [開始時刻-終了時刻]")
+            sys.exit(1)
+        hours_filter = None
+        if "=" not in rest[-1]:
+            hours_filter = parse_hours_arg(rest.pop())
+        if not rest:
+            print("使い方: python3 backtest.py <SYMBOL> <開始日> <終了日> --grid <パラメータ名=値1,値2,...> [パラメータ名=... ...] [開始時刻-終了時刻]")
+            sys.exit(1)
+        grid_spec = parse_grid_args(rest)
+        run_grid(symbol_id, start_date, end_date, grid_spec, hours_filter)
     else:
         hours_filter = parse_hours_arg(sys.argv[4]) if len(sys.argv) > 4 else None
         run_backtest(symbol_id, start_date, end_date, hours_filter)

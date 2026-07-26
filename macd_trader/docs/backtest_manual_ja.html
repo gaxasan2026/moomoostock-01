@@ -406,6 +406,34 @@ code {
       日付範囲を広げすぎると、初回のみOpenDへの過去データ取得（クォータ消費）が発生します。まずは1〜2週間程度の短い期間で試すことをお勧めします。
     </div>
   </div>
+
+  <h3>1パラメータの検証（--sweep）</h3>
+  <p>エントリー設定の1パラメータだけを複数の値で試し、結果を一覧表示します。<code>data/symbols.json</code>は変更されません（メモリ上でのみ差し替えて再生します）。</p>
+
+  <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
+    python3 backtest.py US.MU 2026-07-01 2026-07-24 --sweep gc_duration_minutes 3,5,7,10,15
+  </div>
+
+  <h3>複数パラメータの組み合わせ検証（--grid）</h3>
+  <p>複数のパラメータを総当たりで組み合わせて試し、<strong>合計損益の降順</strong>で一覧表示します。最も成績の良い組み合わせが上に来ます。</p>
+
+  <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
+    python3 backtest.py US.MU 2026-07-01 2026-07-24 --grid gc_duration_minutes=3,5,7 macd_histogram_min=0,0.002,0.005
+  </div>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body">
+      <strong>組み合わせ効果は単純な足し算にならない。</strong> クールダウン・ピーク追跡等の逐次依存性により、各パラメータを個別に<code>--sweep</code>した結果と、組み合わせた際の結果が一致しないことがあります（このマニュアルの<a href="#fidelity">精度の制約</a>と同種の注意点）。また組み合わせ数はパラメータ数・値の数に応じて指数的に増えるため、まず値の候補を絞り込んでから使ってください。
+    </div>
+  </div>
+
+  <div class="callout tip">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body">
+      <code>--sweep</code>・<code>--grid</code>とも1回の実行結果だけで判断せず、複数月にまたがる期間で頑健性を確認してから<code>data/symbols.json</code>への反映を検討してください（<a href="#results">結果の見方</a>を参照）。
+    </div>
+  </div>
 </section>
 
 <!-- ══════════════════════════════════════════ -->
@@ -555,13 +583,10 @@ code {
   <h2>今後の展開</h2>
   <p>現在のv1は「1銘柄・1期間を1回再生する」というコア機能に絞っています。</p>
   <ul style="margin:8px 0 0 20px;font-size:14px;color:var(--text2);line-height:1.8">
-    <li>複数パラメータの組み合わせを自動で試すグリッドサーチ（v2で検討）</li>
+    <li><s>複数パラメータの組み合わせを自動で試すグリッドサーチ</s> — <code>--grid</code>として実装済み（<a href="#usage">使い方</a>参照）</li>
     <li>複数銘柄の一括バックテスト</li>
     <li>バックテスト結果の<code>report.py</code>への統合</li>
   </ul>
-  <p style="margin-top:12px">
-    グリッドサーチは強力ですが、まずはこのコアの再生ロジックが実運用の判断と正確に一致することを、より多くの実データで検証してから着手する方針です。
-  </p>
 </section>
 
 </main>

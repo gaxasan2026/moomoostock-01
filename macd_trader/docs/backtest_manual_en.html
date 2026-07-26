@@ -409,6 +409,34 @@ code {
       Start with a short window (1–2 weeks) while you get familiar with the tool.
     </div>
   </div>
+
+  <h3>Testing a single parameter (--sweep)</h3>
+  <p>Tries one entry-config parameter across several values and prints the results as a table. <code>data/symbols.json</code> is never modified — the value is swapped in memory only, per run.</p>
+
+  <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
+    python3 backtest.py US.MU 2026-07-01 2026-07-24 --sweep gc_duration_minutes 3,5,7,10,15
+  </div>
+
+  <h3>Testing parameter combinations (--grid)</h3>
+  <p>Tries every combination of multiple parameters and prints the results <strong>sorted by total PnL, best first</strong>.</p>
+
+  <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
+    python3 backtest.py US.MU 2026-07-01 2026-07-24 --grid gc_duration_minutes=3,5,7 macd_histogram_min=0,0.002,0.005
+  </div>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body">
+      <strong>Combined effects are not additive.</strong> Sequential-dependency logic (cooldown, peak tracking) means a grid result can disagree with what you'd get from sweeping each parameter individually (the same kind of caveat as <a href="#fidelity">Fidelity Limitations</a>). The number of combinations also grows exponentially with parameter and value count — narrow down your candidate values first.
+    </div>
+  </div>
+
+  <div class="callout tip">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body">
+      Don't judge either <code>--sweep</code> or <code>--grid</code> from a single run — check robustness across several months before committing a result to <code>data/symbols.json</code> (see <a href="#results">Reading Results</a>).
+    </div>
+  </div>
 </section>
 
 <!-- ══════════════════════════════════════════ -->
@@ -571,14 +599,10 @@ code {
   <h2>Roadmap</h2>
   <p>The current v1 is scoped to a single core loop: replay one symbol over one date range.</p>
   <ul style="margin:8px 0 0 20px;font-size:14px;color:var(--text2);line-height:1.8">
-    <li>Parameter grid search across multiple combinations (candidate for v2)</li>
+    <li><s>Parameter grid search across multiple combinations</s> — shipped as <code>--grid</code> (see <a href="#usage">Usage</a>)</li>
     <li>Batch backtesting across multiple symbols</li>
     <li>Integrating backtest output into <code>report.py</code></li>
   </ul>
-  <p style="margin-top:12px">
-    Grid search is powerful, but it's deferred until the core replay engine's fidelity against real live
-    behavior has been validated over more historical data.
-  </p>
 </section>
 
 </main>
