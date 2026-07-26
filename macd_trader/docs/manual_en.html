@@ -176,19 +176,26 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
 
   <div class="callout warn">
     <span class="callout-icon">⚠️</span>
-    <div class="callout-body"><strong>Always start OpenD before launching bots.</strong> If OpenD is not running when a bot starts, it will fail to connect immediately. Your moomoo credentials are entered only in the OpenD app — never store them in any file in this repository.</div>
+    <div class="callout-body"><strong>OpenD must be logged in at least once before it can auto-start.</strong> <code>start.sh</code> (below) will relaunch OpenD automatically on later runs (e.g. after a Mac mini reboot), but the very first login — including any SMS verification — must be done manually. Your moomoo credentials are entered only in the OpenD app — never store them in any file in this repository.</div>
   </div>
 
   <h3>2. Install Python dependencies</h3>
   <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">pip install -r requirements.txt</div>
 
-  <h3>3. Start the Web GUI</h3>
-  <p>Run the included launcher script — it stops any existing server, verifies <code>symbols.json</code> exists, and starts the app.</p>
+  <h3>3. Start MACD Trader</h3>
+  <p>Run the included launcher script. It checks whether OpenD is already listening on port <code>11111</code> and launches it automatically if not (waiting for it to come up), stops any existing web server, verifies <code>symbols.json</code> exists, and starts the app.</p>
   <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
-    bash /path/to/moomoostock-01/start.sh
+    bash /path/to/moomoostock-01/start.sh<br><br>
+    # Also auto-start specific symbols' bots after the Web GUI comes up<br>
+    bash /path/to/moomoostock-01/start.sh --start-bots=US.SPCX,US.CBRS,US.MU
   </div>
   <p style="margin-top:8px">Open <code>http://localhost:5001</code> in your browser.</p>
   <p style="margin-top:4px;font-size:13px;color:var(--text2)">To start manually: <code>cd macd_trader &amp;&amp; python3 web_app.py</code></p>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body"><strong>Always list symbols explicitly with <code>--start-bots</code>.</strong> <code>data/symbols.json</code> can retain configuration for symbols you've deliberately paused (e.g. under re-evaluation) — there's no "all registered symbols" mode, precisely so a reboot can't silently resume monitoring on something you turned off.</div>
+  </div>
 
   <h3>Symbol count limit</h3>
   <p>The moomoo OpenD API enforces the following subscription limit:</p>

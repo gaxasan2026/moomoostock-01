@@ -494,8 +494,8 @@ code {
 <!-- ══════════════════════════════════════════ -->
 <section id="setup">
   <h2>起動手順</h2>
-  <h3>1. moomoo OpenD の起動</h3>
-  <p>OpenDはmoomoo証券のAPIゲートウェイです。ボット起動前に必ずOpenDを起動してください。</p>
+  <h3>1. moomoo OpenD の初回セットアップ</h3>
+  <p>OpenDはmoomoo証券のAPIゲートウェイです。初回のみ、手動でログインしておく必要があります（2回目以降は<code>start.sh</code>が自動起動します）。</p>
   <ol class="steps">
     <li><strong>/Applications/moomoo_OpenD.app</strong> を起動する</li>
     <li>moomooアカウントでログイン（SMS認証コードが必要な場合あり）</li>
@@ -503,17 +503,24 @@ code {
     <li>ポート <code>11111</code> がリスニング状態であることを確認（<code>lsof -i :11111</code>）</li>
   </ol>
 
-  <h3>2. Web アプリの起動</h3>
-  <p>リポジトリ直下の <code>start.sh</code> を実行するだけで起動できます。</p>
+  <h3>2. MACD Trader の起動</h3>
+  <p>リポジトリ直下の <code>start.sh</code> を実行します。OpenDが未起動なら自動的に起動・接続待機してから、Web GUIを起動します。</p>
   <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
-    bash /path/to/moomoostock-01/start.sh
+    bash /path/to/moomoostock-01/start.sh<br><br>
+    # OpenD確認・起動 + Web GUI起動に加えて、指定銘柄のボットも自動起動する場合<br>
+    bash /path/to/moomoostock-01/start.sh --start-bots=US.SPCX,US.CBRS,US.MU
   </div>
   <p style="margin-top:8px">起動後、ブラウザで <code>http://localhost:5001</code> を開いてください。</p>
   <p style="margin-top:4px;font-size:13px;color:var(--text2)">※ 手動で起動する場合: <code>cd macd_trader &amp;&amp; python3 web_app.py</code></p>
 
   <div class="callout tip">
     <span class="callout-icon">💡</span>
-    <div class="callout-body"><strong>OpenDが先、ボットが後。</strong> OpenDが起動していない状態でボットを開始すると接続エラーになります。<br><code>start.sh</code> はサーバーの二重起動を防ぎ、<code>data/symbols.json</code> の存在も確認します。</div>
+    <div class="callout-body"><strong>OpenDが先、ボットが後。</strong> <code>start.sh</code>はポート<code>11111</code>を確認し、未起動なら<code>moomoo_OpenD.app</code>を自動起動して接続を待ってからWeb GUIを起動します（初回ログイン済みであれば、Mac mini再起動後も手動操作なしで復旧できます）。また既存サーバーの二重起動防止・<code>data/symbols.json</code>の存在確認も行います。</div>
+  </div>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body"><strong><code>--start-bots</code>は必ず銘柄を明示的に指定する。</strong> <code>data/symbols.json</code>には検証保留中で停止させている銘柄（例: NVDA/TSLA/SKHY）の設定も残っているため、「登録済み全銘柄」を自動起動する仕様にはしていません。稼働させたい銘柄だけをカンマ区切りで指定してください。</div>
   </div>
 
   <h3>監視銘柄数の上限</h3>
