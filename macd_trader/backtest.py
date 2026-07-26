@@ -35,6 +35,7 @@ sys.path.insert(0, str(BASE_DIR))
 from config_loader import MacdConfig, EntryConfig, ExitConfig, OrderConfig, RiskConfig, OpendConfig
 from macd_engine import MacdEngine
 from kdj_engine import KdjEngine
+from bar_signals import compute_bar_signals, decide_trade
 from signal_tracker import SignalTracker
 from trade_engine import TradeEngine
 from risk_manager import RiskManager
@@ -96,53 +97,34 @@ def _replay(df: pd.DataFrame, macd_cfg: MacdConfig, entry_cfg: EntryConfig,
 
     for i in range(KLINE_WINDOW, len(df) + 1):
         window = df.iloc[i - KLINE_WINDOW:i]
-        window = macd_engine.calculate(window)
-        macd_vals = macd_engine.get_latest(window)
-        kdj_vals = None
-        if entry_cfg.kdj_max_d > 0:
-            kdj_window = kdj_engine.calculate(window)
-            kdj_vals = kdj_engine.get_latest(kdj_window)
+        signals = compute_bar_signals(window, macd_engine, kdj_engine, tracker, entry_cfg.kdj_max_d)
 
-        current_price = float(window["close"].iloc[-1])
-        bar_time = window["time_key"].iloc[-1]
-        if hasattr(bar_time, "to_pydatetime"):
-            bar_time = bar_time.to_pydatetime()
-
-        volume_ratio = 1.0
-        if len(window) >= 20 and "volume" in window.columns:
-            avg = window["volume"].iloc[-21:-1].mean()
-            curr = float(window["volume"].iloc[-1])
-            if avg > 0:
-                volume_ratio = curr / avg
-
-        tracker.update(macd=macd_vals.macd, signal=macd_vals.signal,
-                        current_price=current_price, timestamp=bar_time)
-
-        if tracker.has_position:
-            sell, reason = trade_engine.should_sell(tracker, macd_vals)
-            if sell:
-                qty = tracker.position.quantity  # BUY時の株数をそのまま使う
-                entry = tracker.position.entry_price
-                hold = round(tracker.hold_minutes, 1)
-                pnl = (current_price - entry) * qty
-                total_pnl += pnl
-                if on_exit:
-                    on_exit(current_price, qty, entry, hold, reason,
-                            tracker.daily_trades + 1, bar_time, pnl)
-                tracker.close_position(current_price, reason)
-                closed_trades += 1
+        in_window = (
+            hours_filter is None
+            or hours_filter[0] <= signals.bar_time.time() < hours_filter[1]
+        )
+        # 時間帯外でも保有中ポジションの決済判定は常に行う（新規エントリーのみ制限する）
+        if tracker.has_position or in_window:
+            action, reason = decide_trade(tracker, trade_engine, signals)
         else:
-            in_window = (
-                hours_filter is None
-                or hours_filter[0] <= bar_time.time() < hours_filter[1]
-            )
-            if in_window:
-                buy, reason = trade_engine.should_buy(tracker, macd_vals, volume_ratio, kdj_vals)
-                if buy:
-                    qty = risk_mgr.compute_quantity(current_price, order_cfg.quantity)
-                    if on_entry:
-                        on_entry(current_price, qty, tracker.gc_duration_minutes, bar_time)
-                    tracker.open_position(current_price, qty, bar_time)
+            action, reason = None, "時間帯外"
+
+        if action == "sell":
+            qty = tracker.position.quantity  # BUY時の株数をそのまま使う
+            entry = tracker.position.entry_price
+            hold = round(tracker.hold_minutes, 1)
+            pnl = (signals.current_price - entry) * qty
+            total_pnl += pnl
+            if on_exit:
+                on_exit(signals.current_price, qty, entry, hold, reason,
+                        tracker.daily_trades + 1, signals.bar_time, pnl)
+            tracker.close_position(signals.current_price, reason)
+            closed_trades += 1
+        elif action == "buy":
+            qty = risk_mgr.compute_quantity(signals.current_price, order_cfg.quantity)
+            if on_entry:
+                on_entry(signals.current_price, qty, tracker.gc_duration_minutes, signals.bar_time)
+            tracker.open_position(signals.current_price, qty, signals.bar_time)
 
     return closed_trades, total_pnl
 
