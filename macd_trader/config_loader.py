@@ -1,10 +1,8 @@
 """
 config_loader.py
-trading_config.yaml を読み込み、バリデーションして返す
+設定値のデータクラス定義（data/symbols.json から読み込まれる各設定の型）
 """
-import yaml
 from dataclasses import dataclass, field
-from pathlib import Path
 
 
 @dataclass
@@ -84,41 +82,3 @@ class TradingConfig:
     opend: OpendConfig = field(default_factory=OpendConfig)
 
 
-def load_config(path: str = "trading_config.yaml") -> TradingConfig:
-    """YAMLファイルを読み込んでTradingConfigを返す"""
-    config_path = Path(path)
-    if not config_path.exists():
-        raise FileNotFoundError(f"設定ファイルが見つかりません: {path}")
-
-    with open(config_path, "r", encoding="utf-8") as f:
-        raw = yaml.safe_load(f)
-
-    cfg = TradingConfig(
-        symbol=raw.get("symbol", "US.SPCX"),
-        market=raw.get("market", "US"),
-        macd=MacdConfig(**raw.get("macd", {})),
-        entry=EntryConfig(**raw.get("entry", {})),
-        exit=ExitConfig(**raw.get("exit", {})),
-        order=OrderConfig(**raw.get("order", {})),
-        risk=RiskConfig(**raw.get("risk", {})),
-        logging=LoggingConfig(**raw.get("logging", {})),
-        opend=OpendConfig(**raw.get("opend", {})),
-    )
-
-    _validate(cfg)
-    return cfg
-
-
-def _validate(cfg: TradingConfig):
-    """基本的なバリデーション"""
-    assert cfg.macd.fast_period < cfg.macd.slow_period, \
-        "fast_period は slow_period より小さくしてください"
-    assert cfg.order.quantity > 0, "quantity は1以上にしてください"
-    assert cfg.order.order_type in ("market", "limit"), \
-        "order_type は 'market' または 'limit' を指定してください"
-    assert cfg.macd.timeframe in (
-        "K_1M", "K_3M", "K_5M", "K_15M", "K_30M", "K_60M",
-        "K_DAY", "K_WEEK", "K_MON"
-    ), f"timeframe が不正です: {cfg.macd.timeframe}"
-    if cfg.order.paper_trading is False:
-        print("⚠️  警告: paper_trading=false です。本番取引が有効です！")

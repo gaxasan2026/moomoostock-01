@@ -214,7 +214,6 @@ class SignalTracker:
         """クールダウン残り時間（分）、0以下なら取引可能"""
         if self._last_trade_time is None:
             return 0.0
-        from config_loader import load_config
         # cooldownはRiskManagerで判定するため、ここでは経過時間だけ返す
         elapsed = (self.current_time - self._last_trade_time).total_seconds() / 60.0
         return elapsed

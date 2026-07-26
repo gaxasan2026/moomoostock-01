@@ -89,19 +89,24 @@ Open `http://localhost:5001` in your browser.
 ```
 macd_trader/
 ├── web_app.py            ← Flask web server (entry point for GUI mode)
-├── main.py               ← CLI entry point (single symbol)
 ├── bot_manager.py        ← Multi-symbol thread management
 ├── config_loader.py      ← Config dataclasses
 ├── macd_engine.py        ← MACD calculation & GC/DC detection
+├── kdj_engine.py         ← Optional KDJ confirmation filter
 ├── signal_tracker.py     ← State: GC duration, peak tracking, position
 ├── trade_engine.py       ← Buy/sell decision logic
 ├── order_manager.py      ← moomoo API wrapper (connect, K-line, orders)
-├── risk_manager.py       ← Daily loss/trade count limits
+├── risk_manager.py       ← Daily loss/trade count limits, dollar-based position sizing
 ├── trade_logger.py       ← CSV trade history
 ├── symbol_store.py       ← Per-symbol JSON config persistence
+├── history_loader.py     ← Historical K-line fetch + local cache
+├── backtest.py           ← Replay live logic against historical data
+├── report.py             ← Post-market performance report
+├── screen.py             ← Pre-registration symbol screening
+├── screen_manager.py     ← Background job runner for screen.py (Web GUI)
 ├── static/index.html     ← Web GUI (single-file, no build step)
-├── trading_config.yaml   ← Config template for CLI mode
 ├── requirements.txt
+├── docs/                 ← Manuals (JA/EN, operations + backtest)
 └── data/
     └── symbols.example.json  ← Copy to symbols.json and edit
 ```
