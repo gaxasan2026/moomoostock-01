@@ -194,10 +194,10 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
 
   <div class="callout warn">
     <span class="callout-icon">⚠️</span>
-    <div class="callout-body"><strong>Always list symbols explicitly with <code>--start-bots</code>.</strong> <code>data/symbols.json</code> can retain configuration for symbols you've deliberately paused (e.g. under re-evaluation) — there's no "all registered symbols" mode, precisely so a reboot can't silently resume monitoring on something you turned off.</div>
+    <div class="callout-body"><strong>Always list symbols explicitly with <code>--start-bots</code>.</strong> <code>data/symbols.json</code> can retain configuration for symbols you've deliberately paused (e.g. under re-evaluation) — there's no "all registered symbols" mode, precisely so a reboot can't silently resume monitoring on something you turned off. There's no cap on how many symbols you can pass to <code>--start-bots</code> itself — the real constraint is the <a href="#symbol-limit">symbol count limit</a> below (10 or fewer recommended in practice).</div>
   </div>
 
-  <h3>Symbol count limit</h3>
+  <h3 id="symbol-limit">Symbol count limit</h3>
   <p>The moomoo OpenD API enforces the following subscription limit:</p>
   <div class="card" style="font-size:13px">
     <strong>symbols × K-line types ≤ 100</strong> (OpenD official spec)

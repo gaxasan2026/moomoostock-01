@@ -520,10 +520,10 @@ code {
 
   <div class="callout warn">
     <span class="callout-icon">⚠️</span>
-    <div class="callout-body"><strong><code>--start-bots</code>は必ず銘柄を明示的に指定する。</strong> <code>data/symbols.json</code>には検証保留中で停止させている銘柄（例: NVDA/TSLA/SKHY）の設定も残っているため、「登録済み全銘柄」を自動起動する仕様にはしていません。稼働させたい銘柄だけをカンマ区切りで指定してください。</div>
+    <div class="callout-body"><strong><code>--start-bots</code>は必ず銘柄を明示的に指定する。</strong> <code>data/symbols.json</code>には検証保留中で停止させている銘柄（例: NVDA/TSLA/SKHY）の設定も残っているため、「登録済み全銘柄」を自動起動する仕様にはしていません。稼働させたい銘柄だけをカンマ区切りで指定してください。<code>--start-bots</code>自体に指定数の上限はありませんが、実質的な制約は次の<a href="#symbol-limit">監視銘柄数の上限</a>に従います（実用上10銘柄以内を推奨）。</div>
   </div>
 
-  <h3>監視銘柄数の上限</h3>
+  <h3 id="symbol-limit">監視銘柄数の上限</h3>
   <p>moomoo OpenD APIのサブスクライブ上限は次の通りです：</p>
   <div class="card" style="font-size:13px">
     <strong>銘柄数 × K線種類数 ≦ 100</strong>（OpenD公式仕様）
