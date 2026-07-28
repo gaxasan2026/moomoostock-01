@@ -50,6 +50,11 @@ from risk_manager import RiskManager
 from trade_logger import TradeLogger
 from history_loader import load_or_fetch_history
 from symbol_store import SymbolStore
+from fast_replay import fast_replay
+# run_backtest/run_sweep/run_gridは高速版(fast_replay)を使う。_replay()自体は
+# ライブ取引と共有していないが、検証済みの基準実装として変更せず残している
+# （fast_replayとの数値・取引単位での一致は verify_fast_indicators.py /
+# verify_fast_replay.py で検証済み、高速化倍率は約4〜10倍）。
 
 KLINE_WINDOW = 200  # ライブ運用と同じロールング窓サイズ（get_kline_data(kline_num=200)に合わせる）
 
@@ -173,7 +178,7 @@ def run_backtest(symbol_id: str, start_date: str, end_date: str,
     def on_exit(price, qty, entry, hold, reason, daily_trades, bar_time, pnl):
         trade_log.log_exit(symbol_id, price, qty, entry, hold, reason, daily_trades, bar_time)
 
-    closed_trades, total_pnl = _replay(
+    closed_trades, total_pnl = fast_replay(
         df, macd_cfg, entry_cfg, exit_cfg, order_cfg, risk_cfg,
         hours_filter=hours_filter, on_entry=on_entry, on_exit=on_exit,
     )
@@ -214,7 +219,7 @@ def run_sweep(symbol_id: str, start_date: str, end_date: str,
     for raw_value in values:
         value = raw_value if field_type is bool else field_type(raw_value)
         entry_cfg = dataclasses.replace(base_entry_cfg, **{param_name: value})
-        closed_trades, total_pnl = _replay(
+        closed_trades, total_pnl = fast_replay(
             df, macd_cfg, entry_cfg, exit_cfg, order_cfg, risk_cfg, hours_filter=hours_filter,
         )
         print(f"{value!s:>10} {closed_trades:>8} {total_pnl:>+14.2f}")
@@ -270,7 +275,7 @@ def run_grid(symbol_id: str, start_date: str, end_date: str,
     for combo in combos:
         overrides = dict(zip(param_names, combo))
         entry_cfg = dataclasses.replace(base_entry_cfg, **overrides)
-        closed_trades, total_pnl = _replay(
+        closed_trades, total_pnl = fast_replay(
             df, macd_cfg, entry_cfg, exit_cfg, order_cfg, risk_cfg, hours_filter=hours_filter,
         )
         results.append((overrides, closed_trades, total_pnl))

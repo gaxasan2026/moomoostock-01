@@ -28,7 +28,10 @@ from pathlib import Path
 MACD_TRADER_DIR = Path(__file__).parent.parent / "macd_trader"
 sys.path.insert(0, str(MACD_TRADER_DIR))
 
-from backtest import _load_data, _replay  # noqa: E402
+from backtest import _load_data  # noqa: E402
+from fast_replay import fast_replay  # noqa: E402
+# fast_replayはbacktest.py._replay()と数値的・取引単位で完全一致することを検証済み
+# （macd_trader/fast_indicators.py・fast_replay.py参照）。高速化倍率は約4〜10倍。
 from config_loader import MacdConfig, EntryConfig, ExitConfig, OrderConfig, RiskConfig, OpendConfig  # noqa: E402
 
 import macd_client
@@ -131,7 +134,7 @@ class BatchBacktestManager:
                         if pnl > 0:
                             win_count += 1
 
-                    closed_trades, total_pnl = _replay(
+                    closed_trades, total_pnl = fast_replay(
                         df, macd_cfg, entry_cfg, exit_cfg, order_cfg, risk_cfg,
                         hours_filter=hours_filter, on_exit=on_exit,
                     )

@@ -28,7 +28,8 @@ BASE_DIR = Path(__file__).parent
 sys.path.insert(0, str(BASE_DIR))
 
 from config_loader import MacdConfig, EntryConfig, ExitConfig, OrderConfig, RiskConfig, OpendConfig
-from backtest import _load_data, _replay, KLINE_WINDOW
+from backtest import _load_data, KLINE_WINDOW
+from fast_replay import fast_replay
 from symbol_store import SymbolStore, DEFAULT_CONFIG
 
 # 標準の5時間帯の境界（マニュアルの「取引時間帯の戦略」に合わせる）
@@ -101,7 +102,7 @@ def run_screen(symbol_id: str, start_date: str, end_date: str,
         })
         pending_entry_time[0] = None
 
-    baseline_trades, baseline_pnl = _replay(
+    baseline_trades, baseline_pnl = fast_replay(
         df, macd_cfg, entry_cfg, exit_cfg, order_cfg, risk_cfg,
         on_entry=on_entry, on_exit=on_exit,
     )
@@ -118,21 +119,37 @@ def run_screen(symbol_id: str, start_date: str, end_date: str,
             slot_stats[idx]["pnl"] += t["pnl"]
 
     # ── ③ 全ての連続時間帯の組み合わせ(15通り)を実際にバックテスト ──
-    progress("時間帯の組み合わせを検証中（15パターン）...")
+    # 集計値だけでなく、各時間帯候補についても月別の内訳を取る
+    # （「有望な時間帯」が特定の月に偏った「まぐれ」でないかを確認するため）
+    progress("時間帯の組み合わせを検証中（15パターン、月別内訳つき）...")
     window_results = []
     n = len(SLOT_BOUNDARIES) - 1
     for i in range(n):
         for j in range(i, n):
             start_t, end_t = SLOT_BOUNDARIES[i], SLOT_BOUNDARIES[j + 1]
             is_full_day = (i == 0 and j == n - 1)
-            wc, wp = _replay(
+
+            w_monthly = defaultdict(lambda: {"count": 0, "pnl": 0.0})
+
+            def w_on_exit(price, qty, entry, hold, reason, daily_trades, bar_time, pnl, _m=w_monthly):
+                key = bar_time.strftime("%Y-%m")
+                _m[key]["count"] += 1
+                _m[key]["pnl"] += pnl
+
+            wc, wp = fast_replay(
                 df, macd_cfg, entry_cfg, exit_cfg, order_cfg, risk_cfg,
                 hours_filter=None if is_full_day else (start_t, end_t),
+                on_exit=w_on_exit,
             )
+            months_sorted = sorted(w_monthly.items())
+            robust_total = len(months_sorted)
+            robust_positive = sum(1 for _, d in months_sorted if d["pnl"] > 0)
+
             label = "終日" if is_full_day else f"{start_t.strftime('%H:%M')}-{end_t.strftime('%H:%M')}"
             window_results.append({
                 "label": label, "start": start_t.strftime("%H:%M"), "end": end_t.strftime("%H:%M"),
                 "trades": wc, "pnl": wp, "is_full_day": is_full_day,
+                "monthly": months_sorted, "robust_total": robust_total, "robust_positive": robust_positive,
             })
     window_results.sort(key=lambda r: -r["pnl"])
 
@@ -172,8 +189,12 @@ def render_html(symbol_id, start_date, end_date, cfg_dict, baseline_trades, base
 
     def _window_row(idx, r):
         row_class = ' class="best"' if idx < 3 else ""
+        robust_title = "; ".join(f"{m}: {d['pnl']:+.2f}" for m, d in r["monthly"]) or "取引なし"
+        robust_cls = "robust-good" if (r["robust_total"] > 0 and r["robust_positive"] == r["robust_total"]) else "robust-warn"
+        robust_text = f"{r['robust_positive']}/{r['robust_total']}ヶ月 黒字" if r["robust_total"] else "—"
         return (f'<tr{row_class}><td>{r["label"]}</td><td class="num">{r["trades"]}</td>'
-                f'<td class="num">{r["pnl"]:+.2f}</td></tr>')
+                f'<td class="num">{r["pnl"]:+.2f}</td>'
+                f'<td class="num"><span class="{robust_cls}" title="{robust_title}">{robust_text}</span></td></tr>')
 
     window_rows = "".join(_window_row(idx, r) for idx, r in enumerate(window_results))
 
@@ -184,7 +205,10 @@ def render_html(symbol_id, start_date, end_date, cfg_dict, baseline_trades, base
 
     top3 = window_results[:3]
     top3_text = "\n".join(
-        f"- {r['label']}: {r['trades']}件 / {r['pnl']:+.2f} USD" for r in top3
+        f"- {r['label']}: {r['trades']}件 / {r['pnl']:+.2f} USD "
+        f"（月別: {r['robust_positive']}/{r['robust_total']}ヶ月 黒字 — "
+        + "; ".join(f"{m}:{d['pnl']:+.2f}" for m, d in r["monthly"]) + "）"
+        for r in top3
     )
     monthly_text = "\n".join(
         f"- {m}: {d['count']}件 / {d['pnl']:+.2f} USD" for m, d in sorted(monthly.items())
@@ -230,6 +254,8 @@ MACD Traderに「{symbol_id}」を新規登録すべきか判断してくださ�
   th {{ color:#7d8590; font-weight:500; font-size:12px; }}
   td.num, th {{ font-variant-numeric:tabular-nums; text-align:right; }}
   tr.best {{ background:#0e2a1a; }}
+  .robust-good {{ color:#3fb950; font-weight:600; cursor:help; border-bottom:1px dotted #3fb950; }}
+  .robust-warn {{ color:#d29922; font-weight:600; cursor:help; border-bottom:1px dotted #d29922; }}
   .copy-btn {{ background:#1f6feb; border:1px solid #1f6feb; color:#fff; padding:8px 16px; border-radius:6px; font-size:13px; cursor:pointer; }}
   .copy-btn:hover {{ background:#388bfd; }}
   .copy-btn.copied {{ background:#238636; border-color:#2ea043; }}
@@ -259,9 +285,13 @@ MACD Traderに「{symbol_id}」を新規登録すべきか判断してくださ�
   </div>
 
   <h2>時間帯の組み合わせ検証（全15パターン、実際に再生・損益順）</h2>
+  <p style="color:#7d8590;font-size:12.5px;margin:-4px 0 10px">
+    「頑健性」は月別の黒字/検証月数（マウスホバーで月別損益を表示）。集計値の合計損益だけで判断すると、
+    特定の月に偏った結果を見落とすことがあるため、必ず頑健性もあわせて確認してください。
+  </p>
   <div class="card">
     <table>
-      <thead><tr><th>時間帯</th><th>件数</th><th>合計損益</th></tr></thead>
+      <thead><tr><th>時間帯</th><th>件数</th><th>合計損益</th><th>頑健性</th></tr></thead>
       <tbody>{window_rows}</tbody>
     </table>
   </div>

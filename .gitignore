@@ -9,6 +9,7 @@ macd_trader/data/symbols.json
 macd_trader/data/history/
 macd_trader/data/notification_config.json
 macd_trader/logs/
+research/results/
 
 # ── Python ────────────────────────────────────────────────────
 __pycache__/
