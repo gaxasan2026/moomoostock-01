@@ -3,10 +3,79 @@ order_manager.py
 moomoo OpenAPI を使った発注・ポジション照会のラッパー
 paper_trading=True の場合はモック動作でAPIを呼ばない
 """
+import fcntl
+import json
 import logging
+import threading
+import time
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
 from config_loader import OrderConfig, OpendConfig
+
+# moomoo/futuのポジション照会APIは「10回/30秒/口座」のレート制限がある。
+# macd_trader・swing_traderは別プロセスとして動作し、かつそれぞれ複数銘柄
+# （=複数OrderManagerインスタンス）を持つため、銘柄ごとに個別照会すると
+# プロセス内・プロセス間の両方でこの上限を容易に超える
+# （実際に7銘柄+8銘柄が同時稼働した際に発生を確認済み）。
+#
+# 対策として、①銘柄を絞らず口座全体のポジション一覧を1回で取得し、
+# ②その結果をプロセスをまたいだファイル共有キャッシュ（TTL付き）に置くことで、
+# 銘柄数・プロセス数が増えても実際のAPI呼び出し回数はTTLの間隔に収束させる。
+_position_query_lock = threading.Lock()
+_last_position_query_at = 0.0
+_MIN_POSITION_QUERY_INTERVAL_SEC = 3.5
+
+# macd_trader/swing_traderの共通の親ディレクトリ（moomoostock-01/）に置き、
+# 両プロセスから同じファイルを参照できるようにする。
+_POSITION_CACHE_PATH = Path(__file__).resolve().parent.parent / "shared_position_cache.json"
+_POSITION_CACHE_TTL_SEC = 8.0
+
+
+def _read_shared_position_cache(trd_env_key: str) -> Optional[dict]:
+    """共有キャッシュが有効期限内であれば {symbol: qty} を返す。無効/未取得ならNone"""
+    if not _POSITION_CACHE_PATH.exists():
+        return None
+    try:
+        with open(_POSITION_CACHE_PATH, "r", encoding="utf-8") as f:
+            fcntl.flock(f, fcntl.LOCK_SH)
+            try:
+                data = json.load(f)
+            finally:
+                fcntl.flock(f, fcntl.LOCK_UN)
+        entry = data.get(trd_env_key)
+        if not entry or (time.time() - entry.get("ts", 0)) > _POSITION_CACHE_TTL_SEC:
+            return None
+        return entry.get("positions", {})
+    except Exception:
+        return None
+
+
+def _write_shared_position_cache(trd_env_key: str, positions: dict):
+    """他のtrd_envのエントリを壊さないよう読み込んでからマージして書き込む
+    （プロセス間の書き込み競合は許容する — キャッシュであり正とする情報源ではないため、
+    最悪でも次のTTL経過後に自己修復する）"""
+    try:
+        _POSITION_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        data = {}
+        if _POSITION_CACHE_PATH.exists():
+            try:
+                with open(_POSITION_CACHE_PATH, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            except Exception:
+                data = {}
+        data[trd_env_key] = {"ts": time.time(), "positions": positions}
+        tmp = _POSITION_CACHE_PATH.with_suffix(".tmp")
+        with open(tmp, "w", encoding="utf-8") as f:
+            fcntl.flock(f, fcntl.LOCK_EX)
+            try:
+                json.dump(data, f)
+            finally:
+                fcntl.flock(f, fcntl.LOCK_UN)
+        tmp.replace(_POSITION_CACHE_PATH)
+    except Exception:
+        pass  # キャッシュ書き込み失敗は致命的ではない（次回また直接APIを叩くだけ）
+
 
 class OrderManager:
     def __init__(self, order_cfg: OrderConfig, opend_cfg: OpendConfig,
@@ -194,6 +263,62 @@ class OrderManager:
             self._logger.warning(f"K線取得エラー: {e}")
         return None
 
+    # ─── ポジション照会（実口座との照合用） ────────────────────────
+
+    def get_real_position_qty(self) -> Optional[int]:
+        """
+        実口座（このsymbol・このtrd_env）の現在の保有数量を取得する。
+        銘柄を絞らず口座全体のポジション一覧を取得し、プロセスをまたいだ
+        ファイル共有キャッシュ（TTL秒）に載せることで、稼働銘柄数・プロセス数が
+        増えてもmoomoo側のレート制限（10回/30秒/口座）を超えないようにする。
+
+        Returns:
+            int: 実際の保有数量（保有なしなら0）
+            None: 照合対象がない（mock_dataモード）、または照会に失敗した
+                  （呼び出し側は「確認できない」扱いとして安全側に倒すこと。
+                  0とNoneを混同しないこと — 0は「確認できて、保有なし」の意味）
+        """
+        if self.cfg.mock_data:
+            return None
+
+        trd_env_key = "SIMULATE" if self.cfg.paper_trading else "REAL"
+
+        cached = _read_shared_position_cache(trd_env_key)
+        if cached is not None:
+            return int(cached.get(self.symbol, 0))
+
+        global _last_position_query_at
+        with _position_query_lock:
+            # ロック待ちの間に他スレッド（同一プロセス）が更新した可能性があるため再確認
+            cached = _read_shared_position_cache(trd_env_key)
+            if cached is not None:
+                return int(cached.get(self.symbol, 0))
+
+            wait = _MIN_POSITION_QUERY_INTERVAL_SEC - (time.monotonic() - _last_position_query_at)
+            if wait > 0:
+                time.sleep(wait)
+            _last_position_query_at = time.monotonic()
+
+            try:
+                import futu as ft
+                trd_env = ft.TrdEnv.SIMULATE if self.cfg.paper_trading else ft.TrdEnv.REAL
+                # codeを指定せず口座全体を1回で取得する（銘柄ごとの個別照会にしない）
+                ret, data = self._trade_ctx.position_list_query(
+                    trd_env=trd_env, refresh_cache=True,
+                )
+                if ret != ft.RET_OK:
+                    self._logger.warning(f"ポジション照会失敗: {data}")
+                    return None
+                positions = {}
+                if data is not None and not data.empty:
+                    for _, row in data.iterrows():
+                        positions[str(row["code"])] = int(row["qty"])
+                _write_shared_position_cache(trd_env_key, positions)
+                return positions.get(self.symbol, 0)
+            except Exception as e:
+                self._logger.warning(f"ポジション照会エラー: {e}")
+                return None
+
     # ─── 発注 ────────────────────────────────────────────────────
 
     def place_buy_order(self, price: float, quantity: int) -> tuple[bool, str]:
@@ -241,16 +366,20 @@ class OrderManager:
             self._logger.error(f"買い注文エラー: {e}")
             return False, str(e)
 
-    def place_sell_order(self, price: float, reason: str, quantity: int) -> tuple[bool, str]:
+    def place_sell_order(self, price: float, reason: str, quantity: int,
+                          force_market: bool = False) -> tuple[bool, str]:
         """
         売り注文を発注する（quantityは対応するBUY時の株数をそのまま渡すこと）
+        force_market=True の場合、銘柄設定のorder_typeに関わらず必ず成行注文にする
+        （ユーザーによる「即時売却」操作用。今すぐ約定させる意図を優先するため）。
         Returns: (成功したか, 注文IDまたはエラーメッセージ)
         """
         qty = quantity
+        use_market = force_market or (self.cfg.order_type == "market")
 
         if self.cfg.mock_data:
             msg = (f"[MOCK] 売り注文: {self.symbol} {qty}株 "
-                   f"@ {'成行' if self.cfg.order_type == 'market' else f'{price:.4f}'} "
+                   f"@ {'成行' if use_market else f'{price:.4f}'} "
                    f"理由={reason}")
             self._logger.info(msg)
             return True, "MOCK_ORDER_SELL"
@@ -259,7 +388,7 @@ class OrderManager:
             import futu as ft
             trd_env = ft.TrdEnv.SIMULATE if self.cfg.paper_trading else ft.TrdEnv.REAL
 
-            if self.cfg.order_type == "market":
+            if use_market:
                 order_price = 0.0
                 order_type = ft.OrderType.MARKET
             else:
@@ -286,3 +415,46 @@ class OrderManager:
         except Exception as e:
             self._logger.error(f"売り注文エラー: {e}")
             return False, str(e)
+
+
+# ─── 市場の開閉状態（即時売却の確認ダイアログ表示用） ──────────────
+
+# MORNING/AFTERNOON以外は「通常取引時間外」として扱う。市場が閉じている間は
+# 成行注文を出しても「受理」されるだけで、実際の約定は次の取引時間まで
+# 持ち越されるため、この状態を呼び出し側（GUI）に明示する。
+_MARKET_STATE_LABELS = {
+    "MORNING": "取引時間中", "AFTERNOON": "取引時間中",
+    "PRE_MARKET_BEGIN": "プレマーケット", "PRE_MARKET_END": "プレマーケット",
+    "AFTER_HOURS_BEGIN": "アフターマーケット", "AFTER_HOURS_END": "アフターマーケット",
+    "CLOSED": "休場中", "NONE": "休場中", "REST": "休場中",
+    "WAITING_OPEN": "取引開始待ち", "AUCTION": "寄付前オークション",
+}
+_REGULAR_HOURS_STATES = {"MORNING", "AFTERNOON"}
+
+
+def get_market_state_for_symbol(symbol: str, host: str, port: int) -> Optional[dict]:
+    """
+    銘柄の現在の市場状態を取得する。この関数は独立した一時的な接続を
+    自前で張って照会する（稼働中ボットの接続とは別。ボットスレッドの
+    内部状態にHTTPハンドラのスレッドから直接触れないようにするため）。
+
+    Returns: {"state": 生の状態名, "is_regular_hours": bool, "label": 日本語ラベル}
+             取得できなければNone
+    """
+    try:
+        import futu as ft
+        ctx = ft.OpenQuoteContext(host=host, port=port)
+        try:
+            ret, data = ctx.get_market_state([symbol])
+        finally:
+            ctx.close()
+        if ret != ft.RET_OK or data is None or data.empty:
+            return None
+        raw = str(data["market_state"].iloc[0])
+        return {
+            "state": raw,
+            "is_regular_hours": raw in _REGULAR_HOURS_STATES,
+            "label": _MARKET_STATE_LABELS.get(raw, raw),
+        }
+    except Exception:
+        return None

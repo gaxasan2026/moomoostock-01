@@ -1,0 +1,664 @@
+
+<meta charset="utf-8">
+<title>Swing Trader — バックテスト・過去データマニュアル</title>
+<style>
+/* ── Token system（macd_trader/docs のマニュアルと同一） ──────── */
+:root {
+  --bg:        #f6f5f1;
+  --surface:   #ffffff;
+  --surface2:  #eeecea;
+  --border:    #dedad4;
+  --text:      #1a2038;
+  --text2:     #5a637a;
+  --text3:     #8a93aa;
+  --accent:    #1a5fc0;
+  --accent-bg: #e8f0fd;
+  --green:     #147a4e;
+  --green-bg:  #e4f5ec;
+  --red:       #c0301a;
+  --red-bg:    #fceae8;
+  --amber:     #96640d;
+  --amber-bg:  #fdf4e0;
+  --navy:      #0e2140;
+  --header-bg: #0e2140;
+  --mono:      'SF Mono', 'Fira Code', 'Consolas', monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:        #0c1220;
+    --surface:   #131c2e;
+    --surface2:  #1a2540;
+    --border:    #253045;
+    --text:      #dde4f0;
+    --text2:     #8a97b5;
+    --text3:     #58688a;
+    --accent:    #4d8fe8;
+    --accent-bg: #0e1f42;
+    --green:     #2dc47a;
+    --green-bg:  #0a2b1a;
+    --red:       #f0614a;
+    --red-bg:    #2e0e0a;
+    --amber:     #e8a830;
+    --amber-bg:  #2a1e04;
+    --navy:      #dde4f0;
+  }
+}
+:root[data-theme="light"] {
+  --bg:#f6f5f1;--surface:#ffffff;--surface2:#eeecea;--border:#dedad4;
+  --text:#1a2038;--text2:#5a637a;--text3:#8a93aa;--accent:#1a5fc0;
+  --accent-bg:#e8f0fd;--green:#147a4e;--green-bg:#e4f5ec;--red:#c0301a;
+  --red-bg:#fceae8;--amber:#96640d;--amber-bg:#fdf4e0;--navy:#0e2140;
+}
+:root[data-theme="dark"] {
+  --bg:#0c1220;--surface:#131c2e;--surface2:#1a2540;--border:#253045;
+  --text:#dde4f0;--text2:#8a97b5;--text3:#58688a;--accent:#4d8fe8;
+  --accent-bg:#0e1f42;--green:#2dc47a;--green-bg:#0a2b1a;--red:#f0614a;
+  --red-bg:#2e0e0a;--amber:#e8a830;--amber-bg:#2a1e04;--navy:#dde4f0;
+}
+
+/* ── Reset & base ─────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.7;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ── Layout ───────────────────────────────────────────────── */
+.layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  grid-template-rows: auto 1fr;
+  min-height: 100vh;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+@media (max-width: 768px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+}
+
+/* ── Header ───────────────────────────────────────────────── */
+header {
+  grid-column: 1 / -1;
+  background: var(--header-bg);
+  color: #fff;
+  padding: 28px 40px;
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+}
+.header-badge {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  background: rgba(255,255,255,.15);
+  border: 1px solid rgba(255,255,255,.25);
+  border-radius: 4px;
+  padding: 3px 9px;
+  color: rgba(255,255,255,.85);
+  align-self: center;
+  white-space: nowrap;
+}
+header h1 {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  line-height: 1.2;
+  color: #fff;
+}
+header h1::before { content: "🕯"; margin-right: 8px; }
+header p {
+  font-size: 13px;
+  color: rgba(255,255,255,.65);
+  margin-top: 4px;
+}
+.header-text { flex: 1; }
+
+/* ── Sidebar ──────────────────────────────────────────────── */
+.sidebar {
+  padding: 28px 0 40px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+}
+.sidebar-section {
+  margin-bottom: 4px;
+}
+.sidebar-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text3);
+  padding: 16px 24px 6px;
+}
+.sidebar a {
+  display: block;
+  font-size: 13px;
+  color: var(--text2);
+  padding: 5px 24px;
+  border-left: 2px solid transparent;
+  transition: color .15s, border-color .15s;
+}
+.sidebar a:hover, .sidebar a.active {
+  color: var(--accent);
+  border-left-color: var(--accent);
+  background: var(--accent-bg);
+  text-decoration: none;
+}
+
+/* ── Main content ─────────────────────────────────────────── */
+main {
+  padding: 40px 48px 80px;
+  max-width: 760px;
+}
+section {
+  margin-bottom: 56px;
+  scroll-margin-top: 24px;
+}
+h2 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--navy);
+  letter-spacing: -.02em;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--border);
+  text-wrap: balance;
+}
+h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 28px 0 10px;
+  text-wrap: balance;
+}
+p { margin-bottom: 12px; color: var(--text2); }
+p strong { color: var(--text); }
+
+/* ── Cards ────────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px 24px;
+  margin-bottom: 12px;
+}
+
+/* ── Param table ──────────────────────────────────────────── */
+.param-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  margin: 12px 0 20px;
+}
+.param-table th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--text3);
+  padding: 8px 12px;
+  border-bottom: 2px solid var(--border);
+}
+.param-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.param-table tr:last-child td { border-bottom: none; }
+.param-table .pname {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--accent);
+  white-space: nowrap;
+  width: 1%;
+}
+.param-table .pdefault {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text3);
+  white-space: nowrap;
+  width: 1%;
+  font-variant-numeric: tabular-nums;
+}
+.param-table .pdesc { color: var(--text); line-height: 1.55; }
+.param-table .pdesc small {
+  display: block;
+  margin-top: 4px;
+  color: var(--text2);
+  font-size: 12px;
+}
+.param-wrap { overflow-x: auto; }
+
+/* ── Badge-style labels ───────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.badge-green { background: var(--green-bg); color: var(--green); }
+.badge-red   { background: var(--red-bg);   color: var(--red); }
+.badge-blue  { background: var(--accent-bg); color: var(--accent); }
+.badge-gray  { background: var(--surface2);  color: var(--text2); }
+.badge-amber { background: var(--amber-bg);  color: var(--amber); }
+
+/* ── Callouts ─────────────────────────────────────────────── */
+.callout {
+  display: flex;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: 7px;
+  border-left: 3px solid;
+  margin: 16px 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+.callout-icon { font-size: 17px; flex-shrink: 0; margin-top: 1px; }
+.callout-body { color: var(--text); }
+.callout-body strong { color: inherit; }
+.callout.tip   { background: var(--accent-bg); border-color: var(--accent); }
+.callout.warn  { background: var(--amber-bg);  border-color: var(--amber); }
+.callout.danger{ background: var(--red-bg);    border-color: var(--red); }
+.callout.pro   { background: var(--green-bg);  border-color: var(--green); }
+
+/* ── Step list ────────────────────────────────────────────── */
+.steps { list-style: none; counter-reset: step; }
+.steps li {
+  counter-increment: step;
+  display: flex;
+  gap: 14px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: var(--text2);
+}
+.steps li::before {
+  content: counter(step);
+  width: 24px; height: 24px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ── Divider ──────────────────────────────────────────────── */
+hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+code {
+  font-family: var(--mono);
+  font-size: 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  color: var(--accent);
+}
+
+/* ── Result meter ─────────────────────────────────────────── */
+.quota-meter {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 12px 0;
+}
+.quota-num { font-family: var(--mono); font-size: 20px; font-weight: 700; }
+.quota-label { font-size: 12px; color: var(--text3); }
+</style>
+
+<div class="layout">
+
+<!-- ── Header ── -->
+<header>
+  <div class="header-text">
+    <h1>Swing Trader — バックテスト</h1>
+    <p>過去データによるパラメータ検証マニュアル v1.0</p>
+  </div>
+  <span class="header-badge">リサーチツール</span>
+</header>
+
+<!-- ── Sidebar ── -->
+<nav class="sidebar">
+  <div class="sidebar-section">
+    <div class="sidebar-label">バックテスト</div>
+    <a href="#overview">概要</a>
+    <a href="#usage">使い方（Swing Backtest Studio）</a>
+    <a href="#quota">過去K線クォータ</a>
+    <a href="#cache">ローカルキャッシュ</a>
+    <a href="#fidelity">精度の制約</a>
+    <a href="#results">結果の見方</a>
+    <a href="#discovery">銘柄発見</a>
+    <a href="#cli">CLIでの実行（スクリプト向け）</a>
+    <a href="#roadmap">今後の展開</a>
+  </div>
+</nav>
+
+<!-- ── Main ── -->
+<main>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="overview">
+  <h2>概要</h2>
+  <p>
+    <strong>Swing Backtest Studio</strong>（<code>http://localhost:5004</code>）は、moomoo OpenDから取得した<strong>過去のK線データ</strong>（日足・60分足）に対して、
+    ライブ運用・Paper Tradingと<strong>同じ判断ロジック</strong>をバー単位で再生し、その銘柄の設定値が実際の値動きに対して有効だったかを検証するWeb GUIです。
+    複数銘柄・複数パラメータをまとめて検証でき、Swing Trader本体（ポート5003）とは別プロセスで、発注機能は一切持ちません。
+  </p>
+
+  <div class="callout tip">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body">
+      <strong>本マニュアルは Swing Trader 本体の運用マニュアルを前提とします。</strong>
+      GC継続時間・利確ライン・損切りラインなど設定値そのものの意味は
+      <a href="manual_ja.html">Swing Trader 操作マニュアル</a>を参照してください。
+      本マニュアルでは、バックテスト特有の話題（過去データ取得・クォータ・キャッシュ・再現精度）のみを扱います。
+    </div>
+  </div>
+
+  <h3>Day Traderのbacktest.pyとの関係</h3>
+  <p>
+    Swing Backtest Studioは、内部で<code>swing_backtest.py</code>（コアツール）を銘柄ごとに呼び出しています。
+    <code>swing_backtest.py</code>は<code>macd_trader/backtest.py</code>の<code>_load_data</code>（過去データ取得・キャッシュ）と、
+    <code>macd_engine.py</code>・<code>kdj_engine.py</code>・<code>bar_signals.py</code>・<code>trade_engine.py</code>・<code>risk_manager.py</code>を
+    そのままread-only importして再利用しています。差し替えているのは<code>signal_tracker.py</code>相当の部分（<code>swing_signal_tracker.py</code>）のみで、
+    「日をまたいでもGC/DC継続時間をリセットしない」という1点だけが異なります。
+    <code>swing_backtest.py</code>を直接コマンドラインから実行したい場合は<a href="#cli">CLIでの実行</a>を参照してください。
+  </p>
+
+  <div class="callout pro">
+    <span class="callout-icon">⚙️</span>
+    <div class="callout-body">
+      日足・60分足の本数はDay Traderの1分足を月単位でウォークフォワード検証する場合よりずっと少ないため（例: 3.5年分の日足でも1,000本未満）、
+      <code>fast_replay.py</code>のような高速化は行わず、<code>macd_trader/backtest.py</code>の<code>_replay()</code>と同型のシンプルな再生ループのみで実装しています。
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="usage">
+  <h2>使い方（Swing Backtest Studio）</h2>
+  <p>Day Trader本体の設定と異なり、<code>swing_trader/data/symbols.json</code>への事前登録は不要です。未登録銘柄も<code>SWING_DEFAULT_CONFIG</code>を初期値として直接検証できます。</p>
+
+  <ol class="steps">
+    <li><code>http://localhost:5004</code> を開き、「📉 バックテスト」タブで対象銘柄を追加</li>
+    <li>期間・足種（K_DAY/K_60M）を指定し、モードを選択:
+      <ul style="margin:6px 0 0 20px">
+        <li><strong>単発</strong>: 現在の設定値でそのまま実行</li>
+        <li><strong>Sweep</strong>: エントリー設定の1パラメータだけを複数の値で試し、結果を一覧表示（<code>SWING_DEFAULT_CONFIG</code>は変更しない）</li>
+        <li><strong>Grid</strong>: 複数のパラメータを総当たりで組み合わせて試し、合計損益の降順で一覧表示</li>
+      </ul>
+    </li>
+    <li>「バックテスト実行」をクリック。銘柄ごとに順番（シリアル）で実行される（OpenDへの同時接続を避けるため）</li>
+    <li>結果一覧から行をクリックすると、<strong>年次の内訳</strong>（頑健性チェック）と現在の登録値との差分プレビューが表示される</li>
+    <li>採用したい設定が見つかったら「反映する」からSwing Trader側へ反映できる（確認ダイアログで差分を必ず確認してから）</li>
+  </ol>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body">
+      日足の最低必要本数は200本（ライブ運用と同じロールングウィンドウ幅）です。約200営業日＝9〜10ヶ月に満たない期間を指定するとエラーになります。まずは数年単位の期間で試すことをお勧めします。
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body">
+      <strong>Sweep/Gridとも対象はエントリー設定（EntryConfig）のみです。</strong>損切り・利確・最大保有時間などエグジット設定（ExitConfig）のパラメータは指定できません（Day Trader Backtest Studioと同じ仕様）。また組み合わせ効果は単純な足し算にならない点、組み合わせ数が指数的に増える点も同様の注意が必要です。
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body">
+      <strong>合計損益だけで採用を判断しないでください。</strong> スイングは月0〜1件程度しか取引が発生しないため、月次ではなく<strong>年次</strong>の内訳で頑健性を確認してから反映を検討してください。1回の実行結果だけでは判断しないでください。
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body">
+      <strong>反映後、Swing Trader本体（ポート5003）側では自動的に画面が更新されません。</strong> 別プロセスのため、反映した銘柄をSwing Trader側で確認するにはブラウザタブを手動でリロードしてください。
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="quota">
+  <h2>過去K線クォータの仕組み</h2>
+  <p>moomoo/Futuの過去K線取得APIのクォータ制約は、時間軸（K_1M/K_DAY等）に関わらずDay Traderと共通です。詳細は<a href="../../macd_trader/docs/DayTrader_backtest_manual_ja.html#quota">Day Traderバックテストマニュアル — 過去K線クォータの仕組み</a>を参照してください。要点のみ再掲します。</p>
+
+  <table class="param-table">
+    <thead><tr><th>項目</th><th>内容</th></tr></thead>
+    <tbody>
+      <tr><td class="pname">消費単位</td><td class="pdesc">「銘柄」単位。同じ銘柄なら期間の長さやK線本数に関わらず1消費</td></tr>
+      <tr><td class="pname">リセット</td><td class="pdesc">消費した日から<strong>7日後</strong>に自動解放される</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout tip">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body">日足は1分足よりバー数が少ないため、より長い期間（数年単位）を1回のリクエストで取得しても、クォータの消費自体は同じ「銘柄単位で1」です。長期間のデータを気兼ねなく取得できます。</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="cache">
+  <h2>ローカルキャッシュ</h2>
+  <p>
+    <code>swing_backtest.py</code>は<code>macd_trader/backtest.py</code>の<code>_load_data</code>をそのまま再利用しているため、
+    キャッシュも<strong>Day Traderと同じ<code>macd_trader/data/history/</code>ディレクトリ</strong>に保存されます（銘柄・足種・期間の組み合わせごとにCSVファイルが分かれるため、干渉はありません）。
+  </p>
+
+  <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
+    macd_trader/data/history/US_AAPL_K_DAY_2023-01-01_2026-07-24.csv
+  </div>
+
+  <p>同じ銘柄・足種・期間でのバックテストを繰り返す場合、2回目以降はOpenDに問い合わせずローカルファイルから読み込まれます。</p>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="fidelity">
+  <h2>精度の制約</h2>
+  <p>バックテストは実運用に忠実であるよう設計していますが、原理的に避けられない差異があります。正直に開示します。</p>
+
+  <h3>① バー確定時点でのみ判定する近似</h3>
+  <p>
+    過去データは確定済みバーのOHLC（始値・高値・安値・終値）のみが記録されており、バー内の値動きの過程は分かりません。
+    日足では1バーが1日分の値動きを圧縮しているため、この近似の影響は1分足よりずっと大きくなります（次項参照）。
+  </p>
+
+  <h3>② ギャップ（窓開け）リスク</h3>
+  <div class="callout danger">
+    <span class="callout-icon">📉</span>
+    <div class="callout-body">
+      <strong>実測例（US.AAPL/TSLA/MU/JPM、K_DAY、2023-01-01〜2026-07-24）：</strong><br>
+      4銘柄とも合計損益はプラスでしたが、US.MUの取引の1件で <code>stop_loss_pct=5.0</code>（損切りライン5%）の設定にもかかわらず、実際の決済は<strong>-13.18%</strong>でした。前日終値から当日終値までの間に想定を超える下落（窓開け）が発生したためです。日足バックテストではこの種のギャップが1分足よりずっと頻繁かつ大きく影響します。
+    </div>
+  </div>
+  <p>詳しい考え方は<a href="manual_ja.html#pro-gap">Swing Trader操作マニュアル — ギャップリスク</a>を参照してください。</p>
+
+  <h3>③ 日をまたぐGC/DC継続時間 — Day Traderとは意図的に異なる挙動</h3>
+  <p>
+    Day Trader（デイトレード版）のバックテストは、日付が変わるとGC/DC継続時間を自動的にリセットします（オーバーナイトをまたいで数え続けると無意味になるため）。
+    <strong>Swing Traderはこの逆で、日をまたいでもリセットしません。</strong>複数日にわたるトレンドの継続性を評価するのがスイングトレードの目的そのものだからです。
+    これは不具合ではなく意図的な設計上の違いで、<code>verify_swing_signal_tracker.py</code>で合成データにより両者の挙動差を検証済みです。
+  </p>
+
+  <h3>④ 日次リスクカウンターは複数日でリセットされない</h3>
+  <p>
+    <code>max_daily_trades</code>・<code>max_daily_loss_pct</code>の日次カウンターは、Day Trader同様、日付が変わってもリセットされません（共有している<code>risk_manager.py</code>由来の既知の制約）。
+    スイングトレードでは取引頻度が低いため実害は出にくいですが、長期間のバックテストで極端に取引が多発するケースでは影響し得ます。
+  </p>
+
+  <h3>⑤ モックデータは1分足前提</h3>
+  <p>
+    <code>order_manager.py</code>のモックデータ生成器は1分足の生成ロジックしか持たないため（<code>mock_data=true</code>時）、日足・60分足での動作確認には使えません。<code>swing_backtest.py</code>は実データのみを扱うため、この制約の影響を受けません（実運用側の既知の制約です）。
+  </p>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="results">
+  <h2>結果の見方</h2>
+  <p>
+    Swing Backtest Studioの結果一覧は<strong>年次の内訳</strong>（頑健性チェック）と現在の登録値との差分プレビューを画面上に表示します。
+    スイングは月0〜1件程度しか取引が発生しないため月次では偏りが判断できず、代わりに年次で「特定の年（部分年含む）に依存した結果ではないか」を確認する設計です。
+  </p>
+  <p>
+    裏側では、ライブ運用の<code>trade_logger.py</code>と<strong>同じCSVスキーマ</strong>でも結果を保持しています
+    （<code>timestamp, action, symbol, price, quantity, entry_price, pnl_usd, pnl_pct, hold_minutes, exit_reason, gc_duration, daily_trades</code>）。
+    CLIから直接実行した場合、出力先は <code>swing_trader/logs/swing_backtest_&lt;銘柄&gt;_&lt;開始日&gt;_&lt;終了日&gt;_&lt;timeframe&gt;.csv</code> です。
+  </p>
+
+  <h3>実測結果の例（2023-01-01〜2026-07-24、K_DAY）</h3>
+  <div class="card">
+    <table class="param-table" style="margin:0">
+      <thead><tr><th>銘柄</th><th>確定取引数</th><th>合計損益</th><th>1日以上のGC継続を経たエントリー</th></tr></thead>
+      <tbody>
+        <tr><td class="pdefault">US.AAPL</td><td class="pdefault">68件</td><td class="pdefault" style="color:var(--green)">+87.36 USD</td><td class="pdesc">69/69件</td></tr>
+        <tr><td class="pdefault">US.TSLA</td><td class="pdefault">79件</td><td class="pdefault" style="color:var(--green)">+515.20 USD</td><td class="pdesc">79/79件</td></tr>
+        <tr><td class="pdefault">US.MU</td><td class="pdefault">81件</td><td class="pdefault" style="color:var(--green)">+898.89 USD</td><td class="pdesc">81/81件</td></tr>
+        <tr><td class="pdefault">US.JPM</td><td class="pdefault">67件</td><td class="pdefault" style="color:var(--green)">+835.72 USD</td><td class="pdesc">68/68件</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="font-size:13px">4銘柄すべてで全エントリーが2,880分（2営業日）を大きく超えるGC継続を経て発生しており、日をまたぐGC継続の蓄積が正しく機能していることが実データで確認できています。ただしこれは4銘柄・1パラメータセットのみの結果であり、パラメータの較正が済んでいるわけではない点に注意してください。</p>
+
+  <div class="callout tip">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body">
+      <code>swing_backtest.py</code>単体（CLI）の出力はCSVそのままです。「🤖 AI評価用にコピー」ボタンが欲しい場合は<code>swing_trader/report.py</code>を使ってください（GC継続時間・保有時間を日/時間換算し、ギャップリスク等の観点を含む評価プロンプトを生成します）。
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="discovery">
+  <h2>銘柄発見（スクリーニング）</h2>
+  <p>
+    Swing Traderの対象として有望な銘柄を、市場全体から絞り込む機能です。
+    <strong>Swing Backtest Studio</strong>（ポート5004）の「🔍 銘柄発見」タブから実行します。
+    発注機能は一切持たず、moomoo OpenDへの読み取り専用の問い合わせのみを行います。
+  </p>
+
+  <h3>やっていること</h3>
+  <p>
+    「有望性」の根拠は、個々の銘柄がこの戦略（2営業日以内にtake_profit 10%/stop_loss 5%程度動く）に構造的に適しているかどうかです。
+    そこで中核条件は<strong>流動性</strong>（時価総額・平均売買代金）と<strong>ボラティリティ</strong>（値幅/Amplitude）に置いています。
+    moomoo OpenDのスクリーニングAPI（<code>get_stock_screen</code>、V2）を使い、以下を条件として指定できます。
+  </p>
+  <div class="param-wrap">
+  <table class="param-table">
+    <thead><tr><th>条件</th><th>役割</th></tr></thead>
+    <tbody>
+      <tr><td class="pname">時価総額 下限</td><td class="pdesc">実務的な取引可能性（極端な小型株を除外）</td></tr>
+      <tr><td class="pname">平均売買代金 下限</td><td class="pdesc">流動性。直近営業日数（1〜4週間相当）で指定</td></tr>
+      <tr><td class="pname">値幅（Amplitude）下限</td><td class="pdesc">ボラティリティ。戦略の値幅目標に届きやすいかの目安。大きいほどギャップリスクも大きくなる点に注意</td></tr>
+      <tr><td class="pname">MACDゴールデンクロス（オプション）</td><td class="pdesc">「今のトレンドに乗る」ための補助条件。<strong>必須ではなく</strong>、ONにすると直近で発生中の銘柄のみに絞り込む</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>使い方</h3>
+  <ol class="steps">
+    <li>Swing Backtest Studio（<code>http://localhost:5004</code>）を開き、「🔍 銘柄発見」タブに切り替える</li>
+    <li>時価総額・平均売買代金・値幅の下限、算出期間を指定（必要ならMACDゴールデンクロスもON）</li>
+    <li>「候補を検索」をクリック。値幅の降順で結果一覧が表示される</li>
+    <li>気になる銘柄の「＋ バックテストへ」をクリックすると、「📉 バックテスト」タブの銘柄バスケットに追加される</li>
+    <li>期間・足種を指定してバックテストを実行し、実際に有望かどうかを検証する（<a href="#usage">使い方</a>を参照）</li>
+  </ol>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body">
+      <strong>この絞り込みだけでは「有望」は保証されません。</strong> 時価総額・流動性・値幅による絞り込みは市場全体を扱える数まで減らすためのフィルタであり、実際に儲かるかどうかの判断は、必ずStage 2（左のバックテスト実行）で年次の頑健性まで確認してから行ってください。
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="cli">
+  <h2>CLIでの実行（スクリプト向け）</h2>
+  <p>
+    Swing Backtest Studioの内部で使われている<code>swing_backtest.py</code>は、単体でもコマンドラインから直接実行できます。
+    自動化・シェルスクリプトからの呼び出し・GUIを介さない再現実行など、スクリプト用途で使いたい場合はこちらを使ってください。
+    Studioの単発/Sweep/Gridモードは、この<code>swing_backtest.py</code>をそのまま呼び出しているだけなので、結果はCLIで直接実行した場合と完全に一致します。
+  </p>
+
+  <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
+    cd swing_trader<br>
+    python3 swing_backtest.py &lt;銘柄&gt; &lt;開始日&gt; &lt;終了日&gt; [--timeframe K_DAY|K_60M]<br><br>
+    # 例（日足、デフォルト）<br>
+    python3 swing_backtest.py US.AAPL 2023-01-01 2026-07-24<br><br>
+    # 例（60分足を試す場合）<br>
+    python3 swing_backtest.py US.AAPL 2023-01-01 2026-07-24 --timeframe K_60M
+  </div>
+
+  <p>実行すると、コンソールに設定値のサマリー、各BUY/SELLがライブ運用と同じ書式で表示され、最後に確定取引数・合計損益・エントリー時のGC継続時間の統計（何件が1日以上のGC継続を経てエントリーしたか）が出ます。</p>
+
+  <h3>1パラメータの検証（--sweep）</h3>
+  <p>エントリー設定の1パラメータだけを複数の値で試し、結果を一覧表示します。<code>SWING_DEFAULT_CONFIG</code>は変更されません（メモリ上でのみ差し替えて再生します）。Studioの「Sweep」モードと同じ処理です。</p>
+
+  <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
+    python3 swing_backtest.py US.AAPL 2023-01-01 2026-07-24 --sweep gc_duration_minutes 1440,2880,4320,5760
+  </div>
+
+  <h3>複数パラメータの組み合わせ検証（--grid）</h3>
+  <p>複数のパラメータを総当たりで組み合わせて試し、合計損益の降順で一覧表示します。Studioの「Grid」モードと同じ処理です。</p>
+
+  <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
+    python3 swing_backtest.py US.AAPL 2023-01-01 2026-07-24 --grid gc_duration_minutes=1440,2880 kdj_max_d=0,80
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="roadmap">
+  <h2>今後の展開</h2>
+  <p>現在は「1銘柄・1期間」を検証するコア機能に絞っています。</p>
+  <ul style="margin:8px 0 0 20px;font-size:14px;color:var(--text2);line-height:1.8">
+    <li><s>Day Traderの<code>--sweep</code>/<code>--grid</code>相当のパラメータ一括検証</s> — <code>--sweep</code>/<code>--grid</code>として実装済み（<a href="#usage">使い方</a>参照）</li>
+    <li><s>複数銘柄の一括バックテスト（Backtest Studio相当のGUI化）</s> — <code>swing_backtest_studio/</code>（ポート5004）として実装済み。単発/Sweep/Gridモード、足種選択、年次内訳での頑健性チェック、Swing Traderへの反映フローに対応</li>
+    <li><s>取引後レポート（<code>report.py</code>相当）とAI評価用コピー機能</s> — <code>swing_trader/report.py</code>として実装済み（GC継続時間等を日/時間換算表示、AI評価プロンプトにギャップリスク・足種の観点を追加）</li>
+    <li><s>銘柄スクリーニング機能（候補発見＋候補評価の2段階）</s> — Swing Backtest Studioの「🔍 銘柄発見」タブとして実装済み（<a href="#discovery">銘柄発見</a>参照）。moomoo OpenDのV2スクリーニングAPI（<code>get_stock_screen</code>）で時価総額・流動性・値幅を中核条件に候補を絞り込み（MACDゴールデンクロスはオプション条件）、発見した候補をそのままバックテストタブへ引き渡して検証する2段階フローに対応</li>
+    <li><code>SWING_DEFAULT_CONFIG</code>パラメータの実測データに基づく較正</li>
+  </ul>
+</section>
+
+</main>
+</div>
+
+<script>
+// Active sidebar link
+const links = document.querySelectorAll('.sidebar a');
+const sections = document.querySelectorAll('main section');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.remove('active'));
+      const id = e.target.id;
+      const link = document.querySelector(`.sidebar a[href="#${id}"]`);
+      if (link) link.classList.add('active');
+    }
+  });
+}, { rootMargin: '-30% 0px -60% 0px' });
+sections.forEach(s => observer.observe(s));
+</script>

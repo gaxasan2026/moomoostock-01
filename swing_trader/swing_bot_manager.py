@@ -1,40 +1,56 @@
 """
-bot_manager.py
-複数銘柄のトレードBotをスレッドで管理する
+swing_bot_manager.py
+macd_trader/bot_manager.py の BotState/BotManager/_bot_loop を最小限フォークしたもの。
+
+差分:
+- SignalTracker → SwingSignalTracker（日をまたぐGC/DC継続を保持する版）
+- ポーリング間隔: K_DAY/K_60Mでは新バー確定が稀なため、5秒固定ではなく
+  POLL_INTERVAL_SECONDS（既定60秒）に変更
+
+それ以外（スレッドモデル・状態管理・ログストア・注文実行）は
+macd_trader/bot_manager.py と同じ構造。macd_engine/kdj_engine/bar_signals/
+trade_engine/order_manager/risk_manager/trade_logger/discord_notifierは
+日付演算を含まない、または時間足非依存のため、そのままread-only importして使う。
 """
 import collections
 import logging
-import os
+import sys
 import threading
 import time
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
-from config_loader import (
+import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).parent.parent / "macd_trader"))
+sys.path.insert(0, str(Path(__file__).parent))
+
+from config_loader import (  # noqa: E402
     TradingConfig, MacdConfig, EntryConfig, ExitConfig,
     OrderConfig, RiskConfig, LoggingConfig, OpendConfig, OscillatorConfig,
 )
-from engine_factory import build_trend_engine, build_oscillator_engine
-from bar_signals import compute_bar_signals, decide_trade
-from signal_tracker import SignalTracker
-from trade_engine import TradeEngine
-from order_manager import OrderManager, get_market_state_for_symbol
-from risk_manager import RiskManager
-from discord_notifier import notify_trade
-from trade_logger import TradeLogger
-from position_store import PositionStore
-from position_reconciler import apply_reconcile, restore_from_store
+from engine_factory import build_trend_engine, build_oscillator_engine  # noqa: E402
+from bar_signals import compute_bar_signals, decide_trade  # noqa: E402
+from trade_engine import TradeEngine  # noqa: E402
+from order_manager import OrderManager, get_market_state_for_symbol  # noqa: E402
+from risk_manager import RiskManager  # noqa: E402
+from discord_notifier import notify_trade  # noqa: E402
+from trade_logger import TradeLogger  # noqa: E402
+from position_store import PositionStore  # noqa: E402
+from position_reconciler import apply_reconcile, restore_from_store  # noqa: E402
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+from swing_signal_tracker import SwingSignalTracker  # noqa: E402
 
-# 実口座の保有数量とTrader管理数量の照合結果を永続化する（bot停止→再開をまたいで
-# 「自分が買った数量」を覚えておくため）。全銘柄のbotスレッドで1つを共有する。
-_position_store = PositionStore(os.path.join(BASE_DIR, "data", "positions.json"))
+POLL_INTERVAL_SECONDS = 60  # K_DAY/K_60Mは新バー確定が稀なため、デイトレード版(5秒)より長く取る
 
-# 自分の発注直後は、実口座への反映（約定）が間に合わない可能性があるため、
-# この秒数だけポジション照合をスキップする（誤って「外部で売却された」と
-# 誤検知しないようにするための猶予期間）。
-RECONCILE_GRACE_SECONDS = 30
+# 実口座の保有数量とTrader管理数量の照合結果を永続化する。macd_trader側とは
+# 別ファイル（swing_trader/data/positions.json）で完全に分離する。
+_position_store = PositionStore(str(Path(__file__).parent / "data" / "positions.json"))
+
+# 自分の発注直後は実口座への反映（約定）が間に合わない可能性があるため、
+# この秒数だけポジション照合をスキップする猶予期間。
+RECONCILE_GRACE_SECONDS = 60  # ポーリング間隔(60秒)自体が長いため1サイクル分の猶予を持たせる
 
 # 市場時間外に自分の注文を出した場合、「注文が通った」時点で即座に
 # ポジションを開閉したことにしない（実際の約定は次の取引時間まで持ち越されるため）。
@@ -161,7 +177,7 @@ class BotManager:
             target=_bot_loop,
             args=(symbol_id, cfg_dict, state),
             daemon=True,
-            name=f"bot-{symbol_id}",
+            name=f"swing-bot-{symbol_id}",
         )
         state.thread.start()
         return True, "起動しました"
@@ -229,7 +245,7 @@ def _finalize_buy(symbol_id, state, tracker, pos_store, trade_log, logger,
     tracker.open_position(price, qty, bar_time)
     pos_store.save(symbol_id, price, bar_time.isoformat(), qty, price, bar_time.isoformat(), 0)
     logger.info(f"[{symbol_id}] BUY @ {price:.4f} | GC {gc_duration:.1f}分 | {qty}株")
-    notify_trade(symbol_id, "BUY", price, qty, reason=reason)
+    notify_trade(symbol_id, "BUY", price, qty, reason=reason, app_name="Swing Trader")
 
 
 def _finalize_sell(symbol_id, state, tracker, pos_store, trade_log, logger,
@@ -252,7 +268,7 @@ def _finalize_sell(symbol_id, state, tracker, pos_store, trade_log, logger,
     tracker.close_position(price, reason)
     pos_store.clear(symbol_id)
     logger.info(f"[{symbol_id}] SELL @ {price:.4f} | {reason} | PnL {pnl:+.2f}USD")
-    notify_trade(symbol_id, "SELL", price, qty, reason=reason, pnl=pnl, pnl_pct=pnl_pct)
+    notify_trade(symbol_id, "SELL", price, qty, reason=reason, pnl=pnl, pnl_pct=pnl_pct, app_name="Swing Trader")
 
 
 def _check_pending_order(symbol_id, state, tracker, order_mgr, pos_store,
@@ -294,7 +310,7 @@ def _check_pending_order(symbol_id, state, tracker, order_mgr, pos_store,
 # ─── ボットループ（スレッドで実行） ──────────────────────────────
 
 def _bot_loop(symbol_id: str, cfg_dict: dict, state: BotState):
-    logger = logging.getLogger(f"bot.{symbol_id}")
+    logger = logging.getLogger(f"swing_bot.{symbol_id}")
     logger.setLevel(logging.INFO)
     logger.propagate = False
     handler = _QueueLogHandler(symbol_id)
@@ -304,11 +320,11 @@ def _bot_loop(symbol_id: str, cfg_dict: dict, state: BotState):
     try:
         cfg = _to_config(cfg_dict)
         state.status = "起動中"
-        logger.info(f"[{symbol_id}] 起動 paper={cfg.order.paper_trading}")
+        logger.info(f"[{symbol_id}] 起動 paper={cfg.order.paper_trading} timeframe={cfg.macd.timeframe}")
 
         macd_engine = build_trend_engine(cfg.macd)
         kdj_engine = build_oscillator_engine(cfg.oscillator)
-        tracker = SignalTracker(peak_confirmation_bars=cfg.exit.peak_confirmation_bars)
+        tracker = SwingSignalTracker(peak_confirmation_bars=cfg.exit.peak_confirmation_bars)
         risk_mgr = RiskManager(cfg.risk)
         trade_engine = TradeEngine(cfg.entry, cfg.exit, risk_mgr)
         order_mgr = OrderManager(cfg.order, cfg.opend, cfg.symbol, cfg.market, cfg.macd.timeframe, logger=logger)
@@ -316,13 +332,44 @@ def _bot_loop(symbol_id: str, cfg_dict: dict, state: BotState):
 
         order_mgr.connect()
 
-        # ─ 起動時: 永続化されたポジションを復元し、実口座と照合する ─
+        # ─ 起動時: 永続化されたポジションを復元する ─
+        # ウォームアップ（過去バー再生）より前に復元することで、GC/DC継続時間だけでなく
+        # ピーク価格の追跡も過去バーから正しく継続され、停止直前のピークが引き継がれる。
         restore_from_store(symbol_id, tracker, _position_store, logger)
-        apply_reconcile(symbol_id, tracker, order_mgr, _position_store, logger, state)
+
+        # ─ 起動時ウォームアップ ─
+        # SwingSignalTrackerは生成直後、GC/DC継続時間の起点を持たない。何もせず
+        # 最新バーだけをupdate()すると「起動した瞬間=GCが始まった瞬間」という誤った
+        # 起点になり、既に条件を満たしているトレンドに乗り遅れる（機会損失になる）。
+        # そこで直近200本のウィンドウを過去から順にtracker.update()へ流し込み、
+        # バックテストと同じ考え方で実際の継続時間を復元してからライブループに入る。
+        # このウォームアップ中はdecide_trade()を呼ばないため、売買は一切発生しない。
+        warmup_df = order_mgr.get_kline_data(kline_num=200)
+        if warmup_df is not None and len(warmup_df) >= 40:
+            warmup_macd_df = macd_engine.calculate(warmup_df)
+            # get_cur_kline()（ライブAPI）のtime_keyは生の文字列で返る。
+            # compute_bar_signals()側はこれを想定し「パース失敗時はdatetime.now()に
+            # フォールバック」する設計だが、それはその場でポーリングするライブ運用だから
+            # 許容できる代替であり、200本の過去バーを一括処理するここでは使えない
+            # （全バーが同じ「今」になり、日またぎの継続時間計算が壊れる）。
+            # そのため明示的にパースする。
+            warmup_macd_df["time_key"] = pd.to_datetime(warmup_macd_df["time_key"])
+            for _, row in warmup_macd_df.iterrows():
+                bar_time = row["time_key"].to_pydatetime()
+                tracker.update(macd=float(row["macd"]), signal=float(row["signal"]),
+                               current_price=float(row["close"]), timestamp=bar_time)
+            state_desc = (f"GC継続{tracker.gc_duration_minutes:.0f}分"
+                          if tracker.is_golden_cross else f"DC継続{tracker.dc_duration_minutes:.0f}分")
+            logger.info(f"[{symbol_id}] ウォームアップ完了: {len(warmup_macd_df)}本再生 | {state_desc}")
+        else:
+            logger.warning(f"[{symbol_id}] ウォームアップ用データを取得できませんでした（次回ループで再取得します）")
+
+        # ─ 起動時: 実口座と照合する（ウォームアップで復元/継続した状態に対して行う） ─
+        apply_reconcile(symbol_id, tracker, order_mgr, _position_store, logger, state, app_name="Swing Trader")
 
         logger.info(f"[{symbol_id}] 監視開始")
         state.status = "監視中"
-        last_bar_time = None
+        last_bar_time = None  # Noneのままにする＝次のループで直ちに売買判定を行う
         fail_count = 0
         skip_reconcile_until = 0.0  # 自分の発注直後の猶予期間（time.monotonic()と比較）
 
@@ -331,7 +378,7 @@ def _bot_loop(symbol_id: str, cfg_dict: dict, state: BotState):
             if df is None or len(df) < 40:
                 bar_count = 0 if df is None else len(df)
                 fail_count += 1
-                logger.warning(f"[{symbol_id}] K線不足 ({bar_count}本) — 5秒後リトライ ({fail_count}回目)")
+                logger.warning(f"[{symbol_id}] K線不足 ({bar_count}本) — {POLL_INTERVAL_SECONDS}秒後リトライ ({fail_count}回目)")
                 if fail_count >= 3:
                     logger.warning(f"[{symbol_id}] 接続を再試行します...")
                     try:
@@ -339,7 +386,7 @@ def _bot_loop(symbol_id: str, cfg_dict: dict, state: BotState):
                         fail_count = 0
                     except Exception as re:
                         logger.error(f"[{symbol_id}] 再接続失敗: {re}")
-                time.sleep(5)
+                time.sleep(POLL_INTERVAL_SECONDS)
                 continue
             fail_count = 0
 
@@ -364,7 +411,7 @@ def _bot_loop(symbol_id: str, cfg_dict: dict, state: BotState):
             elif time.monotonic() < skip_reconcile_until:
                 reconcile_ok = True
             else:
-                reconcile_ok = apply_reconcile(symbol_id, tracker, order_mgr, _position_store, logger, state)
+                reconcile_ok = apply_reconcile(symbol_id, tracker, order_mgr, _position_store, logger, state, app_name="Swing Trader")
 
             state.current_price = current_price
             state.has_position = tracker.has_position
@@ -379,7 +426,8 @@ def _bot_loop(symbol_id: str, cfg_dict: dict, state: BotState):
             if tracker.has_position:
                 state.status = f"保有中 ({tracker.gain_pct:+.2f}%)"
             elif tracker.is_golden_cross:
-                state.status = f"GC待機 ({tracker.gc_duration_minutes:.1f}分)"
+                days = tracker.gc_duration_minutes / (24 * 60)
+                state.status = f"GC待機 ({days:.1f}日)"
             else:
                 state.status = "監視中"
 
@@ -413,7 +461,7 @@ def _bot_loop(symbol_id: str, cfg_dict: dict, state: BotState):
                 action, reason = decide_trade(tracker, trade_engine, signals)
 
                 if action == "sell":
-                    qty = tracker.position.quantity  # BUY時の株数をそのまま使う（現在価格から再計算しない）
+                    qty = tracker.position.quantity
                     entry = tracker.position.entry_price
                     hold = round(tracker.hold_minutes, 1)
                     ok, _ = order_mgr.place_sell_order(current_price, reason, qty)
@@ -452,10 +500,14 @@ def _bot_loop(symbol_id: str, cfg_dict: dict, state: BotState):
                 state.status = f"{side_label}待ち（市場再開待ち）"
 
             # 即時売却要求を素早く拾えるよう、短い間隔に分けてスリープする
-            for _ in range(5):
+            # （POLL_INTERVAL_SECONDS=60秒だと、そのまま固定sleepしては
+            #   「即時」売却の意図に反して最大60秒待たされてしまうため）
+            elapsed = 0.0
+            while elapsed < POLL_INTERVAL_SECONDS:
                 if state.stop_event.is_set() or state.force_sell_requested:
                     break
-                time.sleep(1)
+                time.sleep(2)
+                elapsed += 2
 
     except Exception as e:
         logger.error(f"[{symbol_id}] エラー: {e}", exc_info=True)

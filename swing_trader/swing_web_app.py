@@ -1,30 +1,33 @@
 """
-web_app.py
-MACD Trader GUI - Flask Webアプリ
-起動: python web_app.py
-ブラウザで http://localhost:5000 を開く
+swing_web_app.py
+Swing Trader GUI - Flask Webアプリ（macd_trader/web_app.py のスイング版）
+起動: python3 swing_web_app.py
+ブラウザで http://localhost:5003 を開く
+
+macd_trader（ポート5001）・backtest_studio（ポート5002）とは完全に別プロセス・
+別ポート・別データファイル（swing_trader/data/symbols.json）。銘柄スクリーニング
+機能（screen_manager.py相当）はスコープ外のため実装しない。
 """
-import json
 import os
 import sys
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "macd_trader"))
 
 from flask import Flask, jsonify, request, send_from_directory
 
-from symbol_store import SymbolStore, DEFAULT_CONFIG
-from bot_manager import BotManager, get_logs_since
-from screen_manager import ScreenManager
+from swing_symbol_store import SwingSymbolStore
+from swing_config import SWING_DEFAULT_CONFIG
+from swing_bot_manager import BotManager, get_logs_since
 from order_manager import get_market_state_for_symbol
 from daily_pnl import compute_daily_pnl
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 app = Flask(__name__, static_folder=os.path.join(BASE_DIR, "static"))
-store = SymbolStore(os.path.join(BASE_DIR, "data", "symbols.json"))
+store = SwingSymbolStore(os.path.join(BASE_DIR, "data", "symbols.json"))
 manager = BotManager()
-screen_mgr = ScreenManager()
 
 
 # ─── Static ──────────────────────────────────────────────────────
@@ -150,50 +153,13 @@ def get_trades():
 
 @app.route("/api/defaults")
 def get_defaults():
-    return jsonify(DEFAULT_CONFIG)
+    return jsonify(SWING_DEFAULT_CONFIG)
 
 
 @app.route("/api/logs")
 def get_logs():
     since = int(request.args.get("since", 0))
     return jsonify(get_logs_since(since))
-
-
-# ─── Symbol Screening ──────────────────────────────────────────────
-
-@app.route("/api/screen", methods=["POST"])
-def start_screen():
-    data = request.json or {}
-    symbol = data.get("symbol", "").upper().strip()
-    start_date = data.get("start_date", "").strip()
-    end_date = data.get("end_date", "").strip()
-    market = data.get("market", "US")
-    timeframe = data.get("timeframe", "K_1M")
-    target_position_value = float(data.get("target_position_value", 800))
-
-    if not symbol or not start_date or not end_date:
-        return jsonify({"error": "symbol, start_date, end_date は必須です"}), 400
-
-    job_id = screen_mgr.start(symbol, start_date, end_date, market, timeframe, target_position_value)
-    return jsonify({"job_id": job_id}), 202
-
-
-@app.route("/api/screen/<job_id>")
-def get_screen_status(job_id):
-    job = screen_mgr.get(job_id)
-    if not job:
-        return jsonify({"error": "not found"}), 404
-    return jsonify({
-        "status": job.status,
-        "progress": job.progress,
-        "error": job.error,
-        "report_url": f"/screening-reports/{job.report_filename}" if job.report_filename else None,
-    })
-
-
-@app.route("/screening-reports/<path:filename>")
-def serve_screening_report(filename):
-    return send_from_directory(os.path.join(BASE_DIR, "logs"), filename)
 
 
 # ─── Entry Point ─────────────────────────────────────────────────
@@ -203,7 +169,7 @@ if __name__ == "__main__":
     os.makedirs(os.path.join(BASE_DIR, "logs"), exist_ok=True)
     os.makedirs(os.path.join(BASE_DIR, "static"), exist_ok=True)
     print("=" * 50)
-    print("  MACD Trader GUI 起動")
-    print("  http://localhost:5001 をブラウザで開いてください")
+    print("  Swing Trader GUI 起動")
+    print("  http://localhost:5003 をブラウザで開いてください")
     print("=" * 50)
-    app.run(host="0.0.0.0", port=5001, debug=False, threaded=True)
+    app.run(host="0.0.0.0", port=5003, debug=False, threaded=True)

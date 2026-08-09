@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "swing_trader",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["/Users/onomasayuki/Claude/moomoostock-01/swing_trader/swing_web_app.py"],
+      "port": 5003,
+      "autoPort": false
+    }
+  ]
+}

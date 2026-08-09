@@ -1,6 +1,6 @@
 
 <meta charset="utf-8">
-<title>MACD Trader — バックテスト・過去データマニュアル</title>
+<title>Day Trader — バックテスト・過去データマニュアル</title>
 <style>
 /* ── Token system ─────────────────────────────────────────── */
 :root {
@@ -330,7 +330,7 @@ code {
 <!-- ── Header ── -->
 <header>
   <div class="header-text">
-    <h1>MACD Trader — バックテスト</h1>
+    <h1>Day Trader — バックテスト</h1>
     <p>過去データによるパラメータ検証マニュアル v1.0</p>
   </div>
   <span class="header-badge">リサーチツール</span>
@@ -341,12 +341,16 @@ code {
   <div class="sidebar-section">
     <div class="sidebar-label">バックテスト</div>
     <a href="#overview">概要</a>
-    <a href="#usage">使い方</a>
+    <a href="#usage">使い方（Backtest Studio）</a>
+    <a href="#engines">指標エンジンの切替</a>
     <a href="#quota">クォータの仕組み</a>
     <a href="#cache">ローカルキャッシュ</a>
     <a href="#fidelity">精度の制約</a>
     <a href="#results">結果の見方</a>
-    <a href="#screening">銘柄スクリーニング</a>
+    <a href="#screening">銘柄スクリーニング（登録銘柄向け）</a>
+    <a href="#discovery">銘柄発見（市場全体スクリーニング）</a>
+    <a href="#watchlist">moomooウォッチリストへ追加</a>
+    <a href="#cli">CLIでの実行（スクリプト向け）</a>
     <a href="#roadmap">今後の展開</a>
   </div>
 </nav>
@@ -358,10 +362,11 @@ code {
 <section id="overview">
   <h2>概要</h2>
   <p>
-    <code>backtest.py</code> は、moomoo OpenD から取得した<strong>過去のK線データ</strong>に対して、
+    <strong>Backtest Studio</strong>（<code>http://localhost:5002</code>）は、moomoo OpenDから取得した<strong>過去のK線データ</strong>に対して、
     ライブ運用・Paper Tradingと<strong>全く同じ判断ロジック</strong>（<code>macd_engine.py</code> /
     <code>signal_tracker.py</code> / <code>trade_engine.py</code> / <code>risk_manager.py</code>）を
-    バー単位で再生し、その銘柄の設定値が実際の値動きに対して有効だったかを検証するツールです。
+    バー単位で再生し、その銘柄の設定値が実際の値動きに対して有効だったかを検証するWeb GUIです。
+    複数銘柄・複数パラメータをまとめて検証でき、<strong>Day Trader本体（ポート5001）とは別プロセス</strong>として動作し、発注機能は一切持ちません。
   </p>
   <p>
     Paper Tradingでパラメータを検証するには最低2週間の実運用が必要ですが、バックテストなら
@@ -371,34 +376,42 @@ code {
   <div class="callout tip">
     <span class="callout-icon">💡</span>
     <div class="callout-body">
-      <strong>本マニュアルは MACD Trader 本体の運用マニュアルを前提とします。</strong>
+      <strong>本マニュアルは Day Trader 本体の運用マニュアルを前提とします。</strong>
       GC継続時間・利確ライン・損切りラインなど設定値そのものの意味は
-      <a href="manual_ja.html">MACD Trader 操作マニュアル</a>を参照してください。
+      <a href="DayTrader_manual_ja.html">Day Trader 操作マニュアル</a>を参照してください。
       本マニュアルでは、バックテスト特有の話題（過去データ取得・クォータ・キャッシュ・再現精度）のみを扱います。
     </div>
   </div>
 
   <h3>本体との関係</h3>
   <p>
-    <code>backtest.py</code> は新しいロジックを持たず、<code>data/symbols.json</code>に登録済みの
+    Backtest Studioは、内部で<code>backtest.py</code>（新しいロジックを持たないコアツール）を銘柄ごとに呼び出しています。
+    <code>backtest.py</code>自体は<code>data/symbols.json</code>に登録済みの
     銘柄設定と、ライブ運用が使っているのと同じPythonモジュールをそのまま読み込んで動作します。
     これは「バックテストの判断が実運用の判断と食い違う」というズレを防ぐための、意図的な設計判断です。
+    <code>backtest.py</code>を直接コマンドラインから実行したい場合は<a href="#cli">CLIでの実行</a>を参照してください。
   </p>
 </section>
 
 <!-- ══════════════════════════════════════════ -->
 <section id="usage">
-  <h2>使い方</h2>
-  <p>対象銘柄は事前にWeb GUIまたは<code>data/symbols.json</code>に登録されている必要があります（MACD・エントリー・エグジット・リスク設定を読み込むため）。</p>
+  <h2>使い方（Backtest Studio）</h2>
+  <p>対象銘柄は事前にWeb GUIまたは<code>data/symbols.json</code>に登録されている必要があります（MACD・エントリー・エグジット・リスク設定を読み込むため）。未登録銘柄もStudio上で入力でき、その場合はDay Trader標準のデフォルト設定から出発します。</p>
 
-  <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
-    cd macd_trader<br>
-    python3 backtest.py &lt;銘柄&gt; &lt;開始日&gt; &lt;終了日&gt;<br><br>
-    # 例<br>
-    python3 backtest.py US.MU 2026-07-18 2026-07-24
-  </div>
-
-  <p>実行すると、コンソールに各BUY/SELLがライブ運用と同じ書式で表示され、最後に確定取引数・合計損益・出力ファイルパスのサマリーが出ます。</p>
+  <ol class="steps">
+    <li><code>http://localhost:5002</code> を開く</li>
+    <li>対象銘柄を追加（登録済み銘柄はサジェストされる）</li>
+    <li>期間を指定し、モードを選択:
+      <ul style="margin:6px 0 0 20px">
+        <li><strong>単発</strong>: 現在の設定値でそのまま実行</li>
+        <li><strong>Sweep</strong>: エントリー設定の1パラメータだけを複数の値で試し、結果を一覧表示（<code>data/symbols.json</code>は変更しない）</li>
+        <li><strong>Grid</strong>: 複数のパラメータを総当たりで組み合わせて試し、<strong>合計損益の降順</strong>で一覧表示（最も成績の良い組み合わせが上に来る）</li>
+      </ul>
+    </li>
+    <li>「バックテスト実行」をクリック。銘柄ごとに順番（シリアル）で実行される（OpenDへの同時接続を避けるため）</li>
+    <li>結果一覧から行をクリックすると、<strong>月次の内訳</strong>と現在の登録値との差分プレビューが表示される</li>
+    <li>採用したい設定が見つかったら「反映する」から<code>data/symbols.json</code>へ反映できる（確認ダイアログで差分を必ず確認してから）</li>
+  </ol>
 
   <div class="callout warn">
     <span class="callout-icon">⚠️</span>
@@ -407,32 +420,53 @@ code {
     </div>
   </div>
 
-  <h3>1パラメータの検証（--sweep）</h3>
-  <p>エントリー設定の1パラメータだけを複数の値で試し、結果を一覧表示します。<code>data/symbols.json</code>は変更されません（メモリ上でのみ差し替えて再生します）。</p>
-
-  <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
-    python3 backtest.py US.MU 2026-07-01 2026-07-24 --sweep gc_duration_minutes 3,5,7,10,15
-  </div>
-
-  <h3>複数パラメータの組み合わせ検証（--grid）</h3>
-  <p>複数のパラメータを総当たりで組み合わせて試し、<strong>合計損益の降順</strong>で一覧表示します。最も成績の良い組み合わせが上に来ます。</p>
-
-  <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
-    python3 backtest.py US.MU 2026-07-01 2026-07-24 --grid gc_duration_minutes=3,5,7 macd_histogram_min=0,0.002,0.005
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body">
+      <strong>組み合わせ効果は単純な足し算にならない（Gridモード）。</strong> クールダウン・ピーク追跡等の逐次依存性により、各パラメータを個別にSweepした結果と、組み合わせた際の結果が一致しないことがあります（このマニュアルの<a href="#fidelity">精度の制約</a>と同種の注意点）。また組み合わせ数はパラメータ数・値の数に応じて指数的に増えるため、まず値の候補を絞り込んでから使ってください。
+    </div>
   </div>
 
   <div class="callout warn">
     <span class="callout-icon">⚠️</span>
     <div class="callout-body">
-      <strong>組み合わせ効果は単純な足し算にならない。</strong> クールダウン・ピーク追跡等の逐次依存性により、各パラメータを個別に<code>--sweep</code>した結果と、組み合わせた際の結果が一致しないことがあります（このマニュアルの<a href="#fidelity">精度の制約</a>と同種の注意点）。また組み合わせ数はパラメータ数・値の数に応じて指数的に増えるため、まず値の候補を絞り込んでから使ってください。
+      <strong>合計損益だけで採用を判断しないでください。</strong> 結果は必ず月次の内訳を確認し、特定の月に偏った「まぐれ」でないかを見てから判断してください（<a href="#results">結果の見方</a>参照）。1回の実行結果だけで<code>data/symbols.json</code>へ反映しないでください。
     </div>
   </div>
 
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body">
+      <strong>反映後、Day Trader本体（ポート5001）側では自動的に画面が更新されません。</strong> 別プロセスのため、反映した銘柄をDay Trader側で確認するにはブラウザタブを手動でリロードしてください（画面上にもリロードを促すダイアログが表示されます）。
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="engines">
+  <h2>指標エンジンの切替</h2>
+  <p>
+    銘柄ごとにトレンド系指標（MACD／MA）とオシレータ系指標（KDJ／RSI）を独立に選べます
+    （詳細は<a href="DayTrader_manual_ja.html#config-engine">Day Trader操作マニュアル — 戦略エンジンの切替</a>を参照）。
+    Backtest Studioでのバックテストは、<strong>登録済み銘柄の設定（<code>data/symbols.json</code>）をそのまま読み込んで</strong>実行されるため、
+    Studio側で指標を選ぶ操作は不要です。銘柄追加/編集画面（Day Trader本体）で切り替えてから、Backtest Studioで検証してください。
+  </p>
+
   <div class="callout tip">
     <span class="callout-icon">💡</span>
-    <div class="callout-body">
-      <code>--sweep</code>・<code>--grid</code>とも1回の実行結果だけで判断せず、複数月にまたがる期間で頑健性を確認してから<code>data/symbols.json</code>への反映を検討してください（<a href="#results">結果の見方</a>を参照）。
-    </div>
+    <div class="callout-body">画面左パネルの銘柄バスケット付近に「指標の組み合わせ（MACD/MA・KDJ/RSI）は銘柄ごとの設定に従います」という案内が表示されます。<strong>未登録銘柄</strong>（Studio上で新規に入力した銘柄）は常にMACD＋KDJ（標準）で実行されます。</div>
+  </div>
+
+  <h3>実行速度への影響</h3>
+  <p>
+    Backtest Studioは内部で2つの再生エンジンを使い分けています。<strong>MACD＋KDJ（標準の組み合わせ）</strong>の銘柄は、
+    numpyでベクトル化した高速版（<code>fast_replay.py</code>）で再生されます。
+    それ以外の組み合わせ（MA使用、またはRSI使用のいずれか）は、まだ高速化されていない従来のpandasベース実装
+    （<code>backtest.py</code>の<code>_replay()</code>）にフォールバックします。
+  </p>
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body">MACD＋KDJ以外の組み合わせでバックテストすると、同じ期間・銘柄数でも<strong>体感で数倍〜十倍程度遅くなります</strong>（1銘柄・1年分で数十秒程度）。SweepやGridモードで多数の組み合わせを一度に検証する場合は特に時間がかかる点に留意してください。両エンジンの計算結果は回帰テスト（<code>verify_engine_factory.py</code>）で数値一致を確認済みです。</div>
   </div>
 </section>
 
@@ -521,12 +555,14 @@ code {
 <section id="results">
   <h2>結果の見方</h2>
   <p>
-    出力されるCSVは、ライブ運用の <code>trade_logger.py</code> と<strong>全く同じスキーマ</strong>です
-    （<code>timestamp, action, symbol, price, quantity, entry_price, pnl_usd, pnl_pct, hold_minutes, exit_reason, gc_duration, daily_trades</code>）。
+    Backtest Studioの結果一覧は<strong>月次の内訳</strong>と現在の登録値との差分プレビューを画面上に表示します。
+    月次の内訳を見ずに合計損益だけで判断すると、特定の月の「まぐれ」を実力と誤認するリスクがあるため、必ず確認してください。
   </p>
   <p>
-    出力先は <code>logs/backtest_&lt;銘柄&gt;_&lt;開始日&gt;_&lt;終了日&gt;.csv</code> で、ライブ運用の
-    <code>logs/trades_&lt;銘柄&gt;.csv</code> とは別ファイルに分離されています。過去に「全銘柄の取引が1つのファイルに混在してしまう」バグを修正した経緯があるため、意図的にファイルを分けて事故を防いでいます。
+    裏側では、ライブ運用の <code>trade_logger.py</code> と<strong>全く同じCSVスキーマ</strong>でも結果を保持しています
+    （<code>timestamp, action, symbol, price, quantity, entry_price, pnl_usd, pnl_pct, hold_minutes, exit_reason, gc_duration, daily_trades</code>）。
+    CLIから直接実行した場合、出力先は <code>logs/backtest_&lt;銘柄&gt;_&lt;開始日&gt;_&lt;終了日&gt;.csv</code> で、ライブ運用の
+    <code>logs/trades_&lt;銘柄&gt;.csv</code> とは別ファイルに分離されています（過去に「全銘柄の取引が1つのファイルに混在してしまう」バグを修正した経緯があるため、意図的にファイルを分けて事故を防いでいます）。
   </p>
 
   <div class="callout tip">
@@ -539,10 +575,12 @@ code {
 
 <!-- ══════════════════════════════════════════ -->
 <section id="screening">
-  <h2>銘柄スクリーニング</h2>
+  <h2>銘柄スクリーニング（登録銘柄向け・時間帯分析）</h2>
   <p>
-    新しい銘柄を監視対象に追加する前に、その銘柄がこのMACD戦略に向いているかを事前チェックする機能です。
-    Web GUIのヘッダーにある<strong>「🔍 銘柄スクリーニング」</strong>ボタンから実行します（<code>screen.py</code> を内部で呼び出します）。
+    新しい銘柄を監視対象に追加する前に、その銘柄がトレンドフォロー戦略に向いているかを事前チェックする機能です。
+    Day Trader本体（ポート5001）のWeb GUIヘッダーにある<strong>「🔍 銘柄スクリーニング」</strong>ボタンから実行します（<code>screen.py</code> を内部で呼び出します）。
+    この機能はBacktest Studio（ポート5002）とは別物で、<strong>「この1銘柄が向いているか」を時間帯別に深掘り分析</strong>するものです。
+    市場全体から候補銘柄そのものを探したい場合は、次の<a href="#discovery">銘柄発見</a>を使ってください。
   </p>
 
   <h3>やっていること</h3>
@@ -579,13 +617,131 @@ code {
 </section>
 
 <!-- ══════════════════════════════════════════ -->
+<section id="discovery">
+  <h2>銘柄発見（市場全体スクリーニング）</h2>
+  <p>
+    まだ監視対象に登録していない銘柄を、moomoo OpenDの<strong>市場全体スクリーニングAPI</strong>を使って探す機能です。
+    Backtest Studio画面上部の<strong>「🔍 銘柄発見」</strong>タブから使います（<code>screener.py</code>を内部で呼び出します）。
+    前述の<a href="#screening">銘柄スクリーニング</a>が「1銘柄を深掘り分析する」機能なのに対し、こちらは
+    <strong>「そもそもどの銘柄を検討すべきか」を市場全体から絞り込む</strong>機能です。
+  </p>
+
+  <h3>絞り込み条件</h3>
+  <div class="param-wrap">
+  <table class="param-table">
+    <thead><tr><th>条件</th><th>デフォルト</th><th>内容</th></tr></thead>
+    <tbody>
+      <tr><td class="pname">市場</td><td class="pdefault">米国株（US）</td><td class="pdesc">現状はUS株のみ対応</td></tr>
+      <tr><td class="pname">時価総額 下限</td><td class="pdefault">100億USD</td><td class="pdesc">小型株のノイズ・流動性リスクを避けるための下限</td></tr>
+      <tr><td class="pname">平均売買代金 下限</td><td class="pdefault">2,000万USD</td><td class="pdesc">流動性条件。約定のしやすさに直結</td></tr>
+      <tr><td class="pname">値幅（Amplitude）下限</td><td class="pdefault">5%</td><td class="pdesc">指定期間内の高値-安値の値幅がこの%以上の銘柄のみ</td></tr>
+      <tr>
+        <td class="pname">算出期間</td>
+        <td class="pdefault">3営業日</td>
+        <td class="pdesc">
+          値幅を計算する対象期間。1／3／5営業日から選択
+          <small>デイトレードは保有期間が短いため、Swing Backtest Studio側の同機能（5／10／20営業日）より短い期間をデフォルトにしています</small>
+        </td>
+      </tr>
+      <tr>
+        <td class="pname">MACDゴールデンクロス（任意）</td>
+        <td class="pdefault">オフ</td>
+        <td class="pdesc">
+          オンにすると、指定した足種（K_1M／K_5M／K_60M）で現在GC中の銘柄のみに絞り込む
+          <small>「今のトレンドに乗る」ための補助条件。必須にはしていない（有望性の主判断はStage 2のバックテストで行うため）</small>
+        </td>
+      </tr>
+      <tr><td class="pname">最大表示件数</td><td class="pdefault">50件</td><td class="pdesc">値幅の降順でソートして上位N件を表示</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>使い方</h3>
+  <ol class="steps">
+    <li>Backtest Studio上部タブで「🔍 銘柄発見」を選択</li>
+    <li>条件を指定し、「候補を検索」をクリック</li>
+    <li>結果一覧（銘柄・価格・時価総額・値幅%・平均売買代金）が値幅の降順で表示される</li>
+    <li>気になる銘柄は「＋ バックテストへ」で「📉 バックテスト」タブの銘柄バスケットに追加し、通常のバックテストで有望性を検証する</li>
+    <li>moomooアプリでも確認したい場合は「📥 moomooへ」から<a href="#watchlist">ウォッチリストに追加</a>できる</li>
+  </ol>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body">この機能は<strong>構造的な条件（流動性・ボラティリティ）による一次絞り込み</strong>にすぎません。「有望」の最終判断は、必ずバックテスト（Stage 2）で実際の値動きに対する有効性を確認してから行ってください。</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="watchlist">
+  <h2>moomooウォッチリストへ追加</h2>
+  <p>
+    <a href="#discovery">銘柄発見</a>やバックテスト結果一覧の<strong>「📥 moomooへ」</strong>ボタンから、
+    候補銘柄をmoomooアプリの自選株（ウォッチリスト）へ直接追加できます（<code>modify_user_security</code>を内部で呼び出します）。
+    発注機能は持たないBacktest Studioにおいて、唯一moomoo側の状態を変更する機能です。
+  </p>
+
+  <h3>使い方</h3>
+  <ol class="steps">
+    <li>候補銘柄の行にある「📥 moomooへ」ボタンの隣のプルダウンから、追加先グループを選択（既定は「Backtest Studio候補」）</li>
+    <li>ボタンをクリックすると、選択したグループへ即座に追加される（確認ダイアログはなし）</li>
+  </ol>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body">
+      <strong>追加先グループは、あらかじめmoomooアプリ側で手動作成しておく必要があります。</strong>
+      futu APIにはグループを新規作成する機能が無いため、存在しないグループ名を指定するとエラー（「不明なお気に入りリスト」）になります。
+      プルダウンには既存のカスタムグループ一覧が自動的に表示されます。
+    </div>
+  </div>
+
+  <div class="callout tip">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body">この機能は<strong>ウォッチリストへの追加のみ</strong>です。発注・銘柄監視の登録（<code>data/symbols.json</code>への反映）は別操作（バックテスト結果の「反映する」ボタン）で行ってください。</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="cli">
+  <h2>CLIでの実行（スクリプト向け）</h2>
+  <p>
+    Backtest Studioの内部で使われている<code>backtest.py</code>は、単体でもコマンドラインから直接実行できます。
+    自動化・シェルスクリプトからの呼び出し・GUIを介さない再現実行など、スクリプト用途で使いたい場合はこちらを使ってください。
+    Studioの単発/Sweep/Gridモードは、この<code>backtest.py</code>をそのまま呼び出しているだけなので、結果はCLIで直接実行した場合と完全に一致します。
+  </p>
+
+  <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
+    cd macd_trader<br>
+    python3 backtest.py &lt;銘柄&gt; &lt;開始日&gt; &lt;終了日&gt;<br><br>
+    # 例<br>
+    python3 backtest.py US.MU 2026-07-18 2026-07-24
+  </div>
+
+  <p>実行すると、コンソールに各BUY/SELLがライブ運用と同じ書式で表示され、最後に確定取引数・合計損益・出力ファイルパスのサマリーが出ます。</p>
+
+  <h3>1パラメータの検証（--sweep）</h3>
+  <p>エントリー設定の1パラメータだけを複数の値で試し、結果を一覧表示します。<code>data/symbols.json</code>は変更されません（メモリ上でのみ差し替えて再生します）。Studioの「Sweep」モードと同じ処理です。</p>
+
+  <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
+    python3 backtest.py US.MU 2026-07-01 2026-07-24 --sweep gc_duration_minutes 3,5,7,10,15
+  </div>
+
+  <h3>複数パラメータの組み合わせ検証（--grid）</h3>
+  <p>複数のパラメータを総当たりで組み合わせて試し、合計損益の降順で一覧表示します。Studioの「Grid」モードと同じ処理です。</p>
+
+  <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
+    python3 backtest.py US.MU 2026-07-01 2026-07-24 --grid gc_duration_minutes=3,5,7 macd_histogram_min=0,0.002,0.005
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
 <section id="roadmap">
   <h2>今後の展開</h2>
   <p>現在のv1は「1銘柄・1期間を1回再生する」というコア機能に絞っています。</p>
   <ul style="margin:8px 0 0 20px;font-size:14px;color:var(--text2);line-height:1.8">
     <li><s>複数パラメータの組み合わせを自動で試すグリッドサーチ</s> — <code>--grid</code>として実装済み（<a href="#usage">使い方</a>参照）</li>
-    <li>複数銘柄の一括バックテスト</li>
-    <li>バックテスト結果の<code>report.py</code>への統合</li>
+    <li><s>複数銘柄の一括バックテスト</s> — Backtest Studio（ポート5002）として実装済み（<a href="#usage">使い方</a>参照）</li>
+    <li>バックテスト結果の<code>report.py</code>への統合（未着手）</li>
   </ul>
 </section>
 

@@ -1,6 +1,6 @@
 
 <meta charset="utf-8">
-<title>MACD Trader — 操作マニュアル</title>
+<title>Day Trader — 操作マニュアル</title>
 <style>
 /* ── Token system ─────────────────────────────────────────── */
 :root {
@@ -398,7 +398,7 @@ code {
 <!-- ── Header ── -->
 <header>
   <div class="header-text">
-    <h1>MACD Trader</h1>
+    <h1>Day Trader</h1>
     <p>moomoo証券 OpenAPI 自動売買システム — 操作マニュアル v1.0</p>
   </div>
   <span class="header-badge">Paper Trading対応</span>
@@ -413,13 +413,17 @@ code {
     <a href="#dashboard">画面の見方</a>
     <a href="#symbols">銘柄管理</a>
     <a href="#botcontrol">ボット操作</a>
+    <a href="#reconcile">ポジション照合</a>
+    <a href="#forcesell">即時売却</a>
+    <a href="#dailypnl">日次損益</a>
     <a href="#report">取引後レポート</a>
     <a href="#notify">Discord通知</a>
   </div>
   <div class="sidebar-section">
     <div class="sidebar-label">設定値ガイド</div>
     <a href="#config-basic">基本設定</a>
-    <a href="#config-macd">MACD</a>
+    <a href="#config-engine">戦略エンジンの切替</a>
+    <a href="#config-macd">トレンド系指標（MACD／MA）</a>
     <a href="#config-entry">エントリー条件</a>
     <a href="#config-exit">エグジット条件</a>
     <a href="#config-risk">リスク管理</a>
@@ -443,7 +447,12 @@ code {
 <!-- ══════════════════════════════════════════ -->
 <section id="overview">
   <h2>アプリ概要</h2>
-  <p>MACD Trader は、moomoo証券のOpenAPIを使用してMACDのゴールデンクロス（GC）／デッドクロス（DC）シグナルを検出し、複数銘柄を同時に自動売買するWebGUIアプリケーションです。</p>
+  <p>Day Trader は、moomoo証券のOpenAPIを使用してゴールデンクロス（GC）／デッドクロス（DC）シグナルを検出し、複数銘柄を同時に自動売買するWebGUIアプリケーションです。トレンド判定にはMACDのほか移動平均（MA）クロスも選択でき、シグナル名としての「GC/DC」自体はどちらの指標でも共通して使われます。</p>
+
+  <div class="callout tip">
+    <span class="callout-icon">🔌</span>
+    <div class="callout-body"><strong>指標エンジンは銘柄ごとに切替可能です。</strong> トレンド判定を<strong>MACD</strong>と<strong>MA（移動平均クロス）</strong>から、追加確認用のオシレータ判定を<strong>KDJ</strong>と<strong>RSI</strong>から、それぞれ独立に選べます。過去データでの比較検証の結果、<strong>デイトレードはMA＋RSI、スイングトレードはMACD＋KDJ</strong>が優位という結論になっており、本アプリの登録銘柄は既定でMA＋RSIで稼働しています。詳細は<a href="#config-engine">戦略エンジンの切替</a>を参照してください。</div>
+  </div>
 
   <div class="status-grid" style="grid-template-columns:1fr 1fr 1fr; margin-top:16px;">
     <div class="card" style="padding:16px;">
@@ -503,7 +512,7 @@ code {
     <li>ポート <code>11111</code> がリスニング状態であることを確認（<code>lsof -i :11111</code>）</li>
   </ol>
 
-  <h3>2. MACD Trader の起動</h3>
+  <h3>2. Day Trader の起動</h3>
   <p>リポジトリ直下の <code>start.sh</code> を実行します。OpenDが未起動なら自動的に起動・接続待機してから、Web GUIを起動します。</p>
   <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
     bash /path/to/moomoostock-01/start.sh<br><br>
@@ -547,7 +556,7 @@ code {
     </div>
     <div class="status-card">
       <span class="badge badge-green sc-badge">監視中</span>
-      <div><div class="sc-label">監視中</div><div class="sc-desc">K線を取得してMACDを計算中。GC待ち状態</div></div>
+      <div><div class="sc-label">監視中</div><div class="sc-desc">K線を取得してトレンド系指標（MACDまたはMA）を計算中。GC待ち状態</div></div>
     </div>
     <div class="status-card">
       <span class="badge badge-blue sc-badge">GC待機</span>
@@ -556,6 +565,14 @@ code {
     <div class="status-card">
       <span class="badge badge-amber sc-badge">保有中</span>
       <div><div class="sc-label">保有中 (+X.XX%)</div><div class="sc-desc">ポジション保有中。括弧内は含み損益率</div></div>
+    </div>
+    <div class="status-card">
+      <span class="badge badge-amber sc-badge">自動取引: N株 / 対象外: A株</span>
+      <div><div class="sc-label">自動取引: N株 / 対象外: A株</div><div class="sc-desc">実口座の保有数量がボット管理数量より多い場合に表示。差分（対象外分）は自動売買の対象になりません。詳細は<a href="#reconcile">ポジション照合</a>を参照</div></div>
+    </div>
+    <div class="status-card">
+      <span class="badge badge-red sc-badge">⚠ 実残高未確認</span>
+      <div><div class="sc-label">⚠ 実残高未確認</div><div class="sc-desc">実口座の残高照会に失敗している状態。安全のため、確認できるまで新規売買は見送られます</div></div>
     </div>
   </div>
 
@@ -567,7 +584,7 @@ code {
       <tr><td class="pname">現在値</td><td class="pdesc">最新K線の終値（市場閉場中は前日終値）</td></tr>
       <tr><td class="pname">ポジション</td><td class="pdesc">保有時：エントリー価格を表示</td></tr>
       <tr><td class="pname">含み益</td><td class="pdesc">保有中の含み損益率（%）。赤=損・緑=益</td></tr>
-      <tr><td class="pname">MACD Hist</td><td class="pdesc">現在のMACDヒストグラム値（MACD線−シグナル線）。正=強気、負=弱気</td></tr>
+      <tr><td class="pname">MACD Hist</td><td class="pdesc">トレンド系指標=MACDの銘柄はMACDヒストグラム値（MACD線−シグナル線）、=MAの銘柄は短期線・長期線の%乖離を表示（<a href="#config-macd">トレンド系指標</a>参照）。正=強気、負=弱気</td></tr>
       <tr><td class="pname">本日取引</td><td class="pdesc">当日に完結した売買回数</td></tr>
       <tr><td class="pname">本日損益</td><td class="pdesc">当日の実現損益合計（USD）</td></tr>
     </tbody>
@@ -576,6 +593,9 @@ code {
 
   <h3>ログエリア</h3>
   <p>画面右下のログは <strong>全銘柄のイベントをリアルタイムで集約</strong>して表示します。1秒ごとにポーリングして新着ログのみを取得します。「クリア」ボタンで表示をリセットできます（ログファイル自体は消えません）。</p>
+
+  <h3>画面サイズの調整</h3>
+  <p>監視銘柄テーブルの下端、および取引履歴とログの間には、ドラッグ可能な境界線があります。銘柄数が多い場合はテーブルを縮小してスクロール表示にしたり、ログをよく見るために取引履歴側を狭めたりできます。調整した幅・高さはブラウザに保存され、次回アクセス時にも維持されます。</p>
 </section>
 
 <!-- ══════════════════════════════════════════ -->
@@ -597,7 +617,7 @@ code {
 
   <div class="callout pro">
     <span class="callout-icon">🔍</span>
-    <div class="callout-body"><strong>追加前の事前チェックを推奨します。</strong>ヘッダーの「🔍 銘柄スクリーニング」から、この銘柄がMACD戦略に向いているかをバックテストで事前確認できます。詳しい使い方は<a href="backtest_manual_ja.html#screening">バックテストマニュアル — 銘柄スクリーニング</a>を参照してください。</div>
+    <div class="callout-body"><strong>追加前の事前チェックを推奨します。</strong>ヘッダーの「🔍 銘柄スクリーニング」から、この銘柄がトレンドフォロー戦略に向いているかをバックテストで事前確認できます。詳しい使い方は<a href="DayTrader_backtest_manual_ja.html#screening">バックテストマニュアル — 銘柄スクリーニング</a>を参照してください。</div>
   </div>
 
   <h3>銘柄の編集・削除</h3>
@@ -611,7 +631,81 @@ code {
 
   <div class="callout warn">
     <span class="callout-icon">⚠️</span>
-    <div class="callout-body"><strong>ポジション保有中の停止に注意。</strong> ボットを強制停止してもポジションは自動的にクローズされません。moomooアプリから手動でポジションを確認・決済してください。</div>
+    <div class="callout-body"><strong>ポジション保有中の停止に注意。</strong> ボットを強制停止してもポジションは自動的にクローズされません。moomooアプリから手動でポジションを確認・決済してください。停止中に保有していたポジションは、次回起動時に自動的に復元され、監視が再開されます（詳細は<a href="#reconcile">ポジション照合</a>を参照）。</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="reconcile">
+  <h2>ポジション照合（実口座との整合性チェック）</h2>
+  <p>Day Traderは、自分自身が発注した数量を<code>data/positions.json</code>に記憶しており、これを「自動取引数量」と呼びます。毎ポーリングごとに実口座の保有数量と照合し、以下のルールで扱います。</p>
+
+  <div class="param-wrap">
+  <table class="param-table">
+    <thead><tr><th>状態</th><th>扱い</th></tr></thead>
+    <tbody>
+      <tr><td class="pname">実口座 = 自動取引数量</td><td class="pdesc">一致。通常通り監視・売買を継続</td></tr>
+      <tr><td class="pname">実口座 &gt; 自動取引数量</td><td class="pdesc">手動買い増し等。差分は「対象外」として画面に表示するのみで、自動取引数量・売買判断は変更しません（手動操作には理由があるかもしれないため）</td></tr>
+      <tr><td class="pname">実口座 &lt; 自動取引数量</td><td class="pdesc">手動売却等。誤ったショート発注を防ぐため、自動取引数量を実口座の数量まで<strong>即座に引き下げます</strong>（0になれば保有なしとして扱います）</td></tr>
+      <tr><td class="pname">実口座を確認できない</td><td class="pdesc">API障害等。安全のため、その回の新規売買判断は見送ります</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="callout tip">
+    <span class="callout-icon">🔁</span>
+    <div class="callout-body"><strong>停止→再開をまたいでも自動取引数量は維持されます。</strong> ボットを停止してもポジション情報は<code>data/positions.json</code>に残るため、再起動すると建値・数量・値幅の追跡（ピーク価格等）が正しく復元された状態で監視が再開されます。</div>
+  </div>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body"><strong>同一銘柄を複数のボットプロセスで同時に実売買しないでください。</strong>（例: Day TraderとSwing Traderで同じ銘柄を両方稼働させる等）。それぞれが相手の発注を「外部からの手動操作」と誤認し、意図しない挙動になる可能性があります。</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="forcesell">
+  <h2>即時売却</h2>
+  <p>ボットの通常の決済ロジック（利確・損切り・ピーク下落・デッドクロス等）を待たずに、保有株を今すぐ手動で決済したい場合に使う機能です。</p>
+
+  <ol class="steps">
+    <li>保有中の銘柄の行に表示される「✕ 即時売却」ボタン、またはヘッダーの「全銘柄（稼働中）の即時売却」ボタンをクリック</li>
+    <li>確認ダイアログに、対象銘柄の現在の<strong>市場状態</strong>（取引時間中／プレマーケット／アフターマーケット／休場中等）が表示されます</li>
+    <li>「売却する」で実行、「キャンセル」または枠外クリックで中止（自動実行は一切されません）</li>
+  </ol>
+
+  <div class="param-wrap">
+  <table class="param-table">
+    <thead><tr><th>項目</th><th>内容</th></tr></thead>
+    <tbody>
+      <tr><td class="pname">対象数量</td><td class="pdesc">ボットが管理している数量（自動取引数量）のみ。「対象外」の株には触れません</td></tr>
+      <tr><td class="pname">注文方式</td><td class="pdesc">銘柄の設定（成行/指値）に関わらず、常に<strong>成行注文</strong>で発注します（「今すぐ」を優先するため）</td></tr>
+      <tr><td class="pname">取引履歴の理由</td><td class="pdesc">「手動決済」として記録され、ボット自身の決済と区別できます</td></tr>
+      <tr><td class="pname">表示条件</td><td class="pdesc">稼働中かつポジション保有中の銘柄のみボタンが表示されます。停止中の銘柄はmoomooアプリから手動で決済してください</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body"><strong>市場が閉じている時間帯は「即時」に約定しません。</strong> 確認ダイアログに市場状態が表示され、取引時間外の場合は赤字で警告が出ます。成行注文自体は受理されますが、実際の約定は次の取引時間まで持ち越されます。</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="dailypnl">
+  <h2>日次損益</h2>
+  <p>ヘッダーの「本日の損益」は、<strong>米国取引日（ET基準）</strong>の実現損益をリアルタイムに近い頻度（30秒ごと）で表示します。日本時間とは日付境界がずれるため、内部では取引ログのタイムスタンプをETに変換してから当日分を集計しています。</p>
+
+  <ol class="steps">
+    <li>ヘッダーの金額表示、または「📊 日次損益」ボタンをクリック</li>
+    <li>直近30〜90日分の<strong>日次実現損益（棒グラフ）</strong>と<strong>累積損益（折れ線）</strong>が1画面に表示される</li>
+    <li>期間セレクタで30/60/90日を切替可能</li>
+  </ol>
+
+  <div class="callout tip">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body">集計対象は<strong>実現損益（SELLで確定した損益）</strong>のみです。含み損益（保有中のポジション）はこのグラフには含まれません。取引が無い日は0円として扱われ、グラフが途切れないようにしています。</div>
   </div>
 </section>
 
@@ -654,7 +748,7 @@ code {
 
   <div class="callout pro">
     <span class="callout-icon">🧪</span>
-    <div class="callout-body">Paper Tradingで2週間待たずに過去データでパラメータを検証したい場合は、<a href="backtest_manual_ja.html">バックテストマニュアル</a>を参照してください。</div>
+    <div class="callout-body">Paper Tradingで2週間待たずに過去データでパラメータを検証したい場合は、<a href="DayTrader_backtest_manual_ja.html">バックテストマニュアル</a>を参照してください。</div>
   </div>
 </section>
 
@@ -683,6 +777,11 @@ code {
     <li><strong>BUY時</strong>: 銘柄・株数・約定価格・エントリー理由</li>
     <li><strong>SELL時</strong>: 銘柄・株数・約定価格・損益（USD・%）・決済理由</li>
   </ul>
+
+  <div class="callout tip">
+    <span class="callout-icon">🏷️</span>
+    <div class="callout-body"><strong>送信元表示名。</strong> Swing Trader（別アプリ、ポート5003）もこの同じWebhook設定ファイルを共有していますが、通知メッセージには毎回明示的に<code>username</code>（"Day Trader" または "Swing Trader"）が付与されるため、同じDiscordチャンネルに両方の通知が届いても送信元名で区別できます（Discord側のWebhook自体の設定名には依存しません）。</div>
+  </div>
 
   <div class="callout tip">
     <span class="callout-icon">🔒</span>
@@ -778,20 +877,88 @@ code {
 </section>
 
 <!-- ══════════════════════════════════════════ -->
+<section id="config-engine">
+  <h2>設定値ガイド — 戦略エンジンの切替</h2>
+  <p>
+    トレンド判定（GC/DCシグナル）とオシレータ判定（追加確認フィルター）は、それぞれ独立したプラグインとして実装されており、
+    銘柄ごとに好きな組み合わせを選べます。切替は銘柄追加/編集モーダルの
+    <strong>「MACD」タブ内の「トレンド系指標」</strong>、および<strong>「エントリー」タブ内の「オシレータ系指標」</strong>で行います。
+  </p>
+
+  <div class="param-wrap">
+  <table class="param-table">
+    <thead><tr><th>系統</th><th>選択肢</th><th>説明</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="pname">トレンド系<br><small>(macd.trend_indicator)</small></td>
+        <td class="pdefault">macd / ma</td>
+        <td class="pdesc"><code>macd</code> = MACD（既定）　<code>ma</code> = 移動平均クロス（EMAまたはSMA）</td>
+      </tr>
+      <tr>
+        <td class="pname">オシレータ系<br><small>(oscillator.indicator)</small></td>
+        <td class="pdefault">kdj / rsi</td>
+        <td class="pdesc"><code>kdj</code> = KDJ（既定）　<code>rsi</code> = RSI</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="callout tip">
+    <span class="callout-icon">📊</span>
+    <div class="callout-body">
+      <strong>過去データでの比較検証結果（登録済み全銘柄・直近3年）：</strong><br>
+      デイトレード（1分足）は <strong>MA(EMA9/21)＋RSI(14)＋乖離幅フィルター0.3%</strong> が
+      標準の<strong>MACD＋KDJ</strong>より明確に優位（7銘柄中7銘柄で黒字）でした。
+      一方スイングトレード（Swing Trader・別アプリ）では逆に<strong>MACD＋KDJ</strong>が明確に優位という結果になりました。
+      この結果を受け、本アプリの登録銘柄は既定で<strong>MA＋RSI</strong>に切り替えて運用しています。
+    </div>
+  </div>
+
+  <div class="callout pro">
+    <span class="callout-icon">🧠</span>
+    <div class="callout-body">
+      <strong>パラメータは「業界標準値」のみを採用し、数値のスイープ最適化はしていません。</strong>
+      MA期間はEMA(9,21)、RSI期間は14という、米国株デイトレーダーの間で最も広く使われている慣行値をそのまま採用しています
+      （テクニカル指標の有効性の一部は、多くのトレーダーが同じ水準を見ていること自体に由来するため）。
+      唯一チューニングしているのは<code>macd_histogram_min</code>（乖離幅フィルター、後述）で、
+      これは「トレンドの強さの目安」ではなく「ノイズ除去のしきい値」という性質のため対象外にしていません。
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body">
+      新しい組み合わせを試す場合は、必ず先に<a href="DayTrader_backtest_manual_ja.html">Backtest Studio</a>で検証してから本番反映してください。
+      MACD＋KDJ以外の組み合わせは高速化されていない旧来のPython実装（<code>backtest.py</code>の低速パス）で再生されるため、
+      MACD＋KDJに比べてバックテストの所要時間が長くなります（1銘柄・1年分で数十秒程度）。
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
 <section id="config-macd">
-  <h2>設定値ガイド — MACD</h2>
-  <p>MACD（Moving Average Convergence Divergence）は、2本のEMA（指数移動平均）の差からトレンドの方向と強さを測る指標です。</p>
+  <h2>設定値ガイド — トレンド系指標（MACD／MA）</h2>
+  <p>MACD（Moving Average Convergence Divergence）は、2本のEMA（指数移動平均）の差からトレンドの方向と強さを測る指標です。MAモードでは、この2本の移動平均線自体のクロスをそのままGC/DCシグナルとして使います。</p>
 
   <div class="callout tip">
     <span class="callout-icon">📐</span>
     <div class="callout-body">
-      <strong>計算式：</strong><br>
+      <strong>MACDモードの計算式：</strong><br>
       MACD線 = EMA(fast_period) − EMA(slow_period)<br>
       シグナル線 = MACD線のEMA(signal_period)<br>
       ヒストグラム = MACD線 − シグナル線<br><br>
-      <strong>ゴールデンクロス（GC）：</strong> MACD線がシグナル線を下から上に突き抜けた瞬間（買いシグナル）<br>
-      <strong>デッドクロス（DC）：</strong> MACD線がシグナル線を上から下に突き抜けた瞬間（売りシグナル）
+      <strong>MAモードの計算式：</strong><br>
+      短期線 = EMAまたはSMA(fast_period)<br>
+      長期線 = EMAまたはSMA(slow_period)<br>
+      ヒストグラム相当値 = (短期線 − 長期線) ÷ 終値 × 100（%乖離。銘柄間の株価水準差を吸収するための正規化）<br><br>
+      <strong>ゴールデンクロス（GC）：</strong> 短期線（またはMACD線）が長期線（またはシグナル線）を下から上に突き抜けた瞬間（買いシグナル）<br>
+      <strong>デッドクロス（DC）：</strong> 上記の逆（売りシグナル）
     </div>
+  </div>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body"><strong>「MACD Hist」列の意味はモードによって変わります。</strong> MACDモードでは実際のMACDヒストグラム値（ドル建て相当）、MAモードでは上記の%乖離値が表示されます。<code>macd_histogram_min</code>（エントリー条件のしきい値）もこの表示値に対して評価されるため、MAモードでは「%」として設定してください（例: 0.3 = 0.3%）。</div>
   </div>
 
   <div class="param-wrap">
@@ -799,26 +966,39 @@ code {
     <thead><tr><th>パラメータ</th><th>デフォルト</th><th>説明・推奨範囲</th></tr></thead>
     <tbody>
       <tr>
-        <td class="pname">短期EMA期間<br><small>(fast_period)</small></td>
-        <td class="pdefault">12</td>
+        <td class="pname">移動平均の種類<br><small>(macd.ma_method)</small></td>
+        <td class="pdefault">ema</td>
         <td class="pdesc">
-          短期EMAの期間。値が小さいほど反応が速く、ノイズが増える
+          トレンド系指標=MAのときのみ有効。短期線・長期線の計算方式
           <small>
-            1分足: 推奨 8〜12<br>
-            5分足: 推奨 12（標準）<br>
-            <span class="range">範囲: 5〜26</span>
+            <code>ema</code> = 指数移動平均（直近の値動きに敏感。デイトレード向け）<br>
+            <code>sma</code> = 単純移動平均（「ゴールデンクロス」として最も広く知られる伝統的な定義。スイングトレード向け）
           </small>
         </td>
       </tr>
       <tr>
-        <td class="pname">長期EMA期間<br><small>(slow_period)</small></td>
-        <td class="pdefault">26</td>
+        <td class="pname">短期期間<br><small>(fast_period)</small></td>
+        <td class="pdefault">12（MACD時）<br>9（MA時の慣行値）</td>
         <td class="pdesc">
-          長期EMAの期間。短期EMA期間より必ず大きい値を設定
+          短期線の期間。MACD/MA共通のフィールドを流用（値が小さいほど反応が速く、ノイズが増える）
           <small>
-            1分足: 推奨 21〜26<br>
-            5分足: 推奨 26（標準）<br>
-            <span class="range">範囲: 13〜52</span>
+            MACD・1分足: 推奨 8〜12<br>
+            MACD・5分足: 推奨 12（標準）<br>
+            MA（EMA）・デイトレード: 推奨 9（業界標準）<br>
+            MA（SMA）・スイング: 推奨 20
+          </small>
+        </td>
+      </tr>
+      <tr>
+        <td class="pname">長期期間<br><small>(slow_period)</small></td>
+        <td class="pdefault">26（MACD時）<br>21（MA時の慣行値）</td>
+        <td class="pdesc">
+          長期線の期間。短期期間より必ず大きい値を設定
+          <small>
+            MACD・1分足: 推奨 21〜26<br>
+            MACD・5分足: 推奨 26（標準）<br>
+            MA（EMA）・デイトレード: 推奨 21（業界標準）<br>
+            MA（SMA）・スイング: 推奨 50
           </small>
         </td>
       </tr>
@@ -826,7 +1006,7 @@ code {
         <td class="pname">シグナル期間<br><small>(signal_period)</small></td>
         <td class="pdefault">9</td>
         <td class="pdesc">
-          シグナル線の平滑化期間。小さいほどクロスが早く発生するがダマシが増える
+          MACDモードのみ使用。シグナル線の平滑化期間。小さいほどクロスが早く発生するがダマシが増える
           <small>
             ほとんどのトレーダーが標準の9を使用<br>
             <span class="range">範囲: 5〜15</span>
@@ -841,7 +1021,7 @@ code {
 <!-- ══════════════════════════════════════════ -->
 <section id="config-entry">
   <h2>設定値ガイド — エントリー条件</h2>
-  <p>GCが発生してもすぐには買いません。以下の<strong>全条件を同時に満たした場合</strong>にのみエントリーします。</p>
+  <p>GCが発生してもすぐには買いません。以下の<strong>全条件を同時に満たした場合</strong>にのみエントリーします。オシレータ系指標（KDJ／RSI）の選択も、この後の「KDJ %D上限」行で扱う<code>kdj_max_d</code>と併せて設定します（<a href="#config-engine">戦略エンジンの切替</a>参照）。</p>
 
   <div class="param-wrap">
   <table class="param-table">
@@ -862,13 +1042,12 @@ code {
       </tr>
       <tr>
         <td class="pname">MACD Hist 最小値<br><small>(macd_histogram_min)</small></td>
-        <td class="pdefault">0.0</td>
+        <td class="pdefault">0.0（MACD時）<br>0.3（MA時の推奨値）</td>
         <td class="pdesc">
-          エントリー時のMACDヒストグラム最小値。正の値を設定することで「GCしたがトレンドが弱い」場合を除外できる
+          エントリー時のヒストグラム最小値。正の値を設定することで「GCしたがトレンドが弱い」場合を除外できる。単位はトレンド系指標の設定により変わる（<a href="#config-macd">トレンド系指標</a>参照）
           <small>
-            0.0 = ヒストグラムが正であればエントリー（条件なし）<br>
-            0.002 = ある程度のモメンタムが確認できたときのみエントリー<br>
-            <span class="range">推奨: 0.0〜0.005（過剰フィルターは機会損失につながる）</span>
+            MACDモード: 0.0 = 条件なし、0.002 = ある程度のモメンタムを要求<span class="range">（推奨: 0.0〜0.005）</span><br>
+            MAモード（%乖離）: 0.0〜0.5% の範囲でバックテスト済み。デイトレード7銘柄では<strong>0.3%（乖離幅フィルター）</strong>が最も頑健な結果だった<span class="range">（推奨: 0.3%）</span>
           </small>
         </td>
       </tr>
@@ -909,15 +1088,25 @@ code {
         </td>
       </tr>
       <tr>
-        <td class="pname">KDJ %D上限<br><small>(kdj_max_d)</small></td>
-        <td class="pdefault">0<br>（無効）</td>
+        <td class="pname">オシレータ系指標<br><small>(oscillator.indicator)</small></td>
+        <td class="pdefault">kdj</td>
         <td class="pdesc">
-          MACDのゴールデンクロスに加えて、KDJ指標（ストキャスティクス系）による追加確認を要求する。設定すると、KDJの%Dがこの値未満（＝売られすぎ圏からの回復途中）かつ%K&gt;%D（＝上向きに転換）の場合のみエントリーを許可する
+          トレンドシグナルへの追加確認に使うオシレータの種類（<a href="#config-engine">戦略エンジンの切替</a>参照）
           <small>
-            0 = 無効（MACDのみで判断、従来通り）<br>
-            80 = ほぼ絞り込まない緩いフィルター（一部銘柄で有効性を確認済み）<br>
-            20〜50 = 厳しめのフィルター（銘柄によっては悪化する場合がある）<br>
-            <span class="range">効果は銘柄ごとに大きく異なる。必ずバックテストで個別検証してから設定すること</span>
+            <code>kdj</code> = KDJ（%K・%D）。次の「KDJ %D上限」がKDJの%Dに対して評価される<br>
+            <code>rsi</code> = RSI（<code>rsi_period</code>で期間指定、デフォルト14）。次の「KDJ %D上限」がRSI値そのものに対して評価される
+          </small>
+        </td>
+      </tr>
+      <tr>
+        <td class="pname">KDJ %D上限<br><small>(kdj_max_d)</small></td>
+        <td class="pdefault">0（無効・KDJ時）<br>70（RSI時の推奨値）</td>
+        <td class="pdesc">
+          GCシグナルに加えて、オシレータによる追加確認を要求する。設定すると、この値未満（＝売られすぎ圏からの回復途中、またはRSIなら過熱していない状態）の場合のみエントリーを許可する。パラメータ名は歴史的経緯でKDJ由来のままだが、RSI選択時も同じ役割を果たす
+          <small>
+            <strong>KDJ選択時：</strong> %Dがこの値未満 かつ %K&gt;%D（上向きに転換）の場合のみ許可。0=無効、80=ほぼ絞り込まない緩いフィルター、20〜50=厳しめ<br>
+            <strong>RSI選択時：</strong> RSI値がこの値未満の場合のみ許可。70=一般的な「買われすぎ」ラインを避ける標準的な設定（デイトレード登録銘柄で採用中）<br>
+            <span class="range">効果は銘柄・オシレータの種類ごとに大きく異なる。必ずバックテストで個別検証してから設定すること</span>
           </small>
         </td>
       </tr>
@@ -1126,7 +1315,7 @@ code {
 <section id="pro-overview">
   <div class="pro-header">
     <h2>プロの立場から見た 効果的な使い方</h2>
-    <p>MACDを使ったアルゴリズム取引の実戦経験に基づく考え方と戦略</p>
+    <p>MACD・MAを使ったアルゴリズム取引の実戦経験に基づく考え方と戦略</p>
   </div>
 
   <div class="callout warn">
@@ -1134,16 +1323,22 @@ code {
     <div class="callout-body"><strong>これは情報提供であり、投資助言ではありません。</strong> 株式投資には元本損失のリスクがあります。実際の取引は自己責任で行ってください。</div>
   </div>
 
-  <p>MACDは優れたトレンドフォロー指標ですが、<strong>万能ではありません。</strong> 効果的に使うには「いつMACDが機能するか」と「いつ機能しないか」を理解することが先決です。</p>
+  <p>MACD・MAはいずれも優れたトレンドフォロー指標ですが、<strong>万能ではありません。</strong> 効果的に使うには「いつトレンド系指標が機能するか」と「いつ機能しないか」を理解することが先決です（この節の内容はMACD・MAいずれのモードにも共通します）。</p>
 
   <div class="insight-block">
-    <h3>MACDが機能する相場</h3>
+    <h3>トレンド系指標が機能する相場</h3>
     <p>方向感のある一方向トレンド、強いニュースや決算による持続的な上昇モメンタム、出来高を伴う明確なブレイクアウト局面。</p>
   </div>
 
   <div class="insight-block">
-    <h3>MACDが機能しない相場</h3>
+    <h3>トレンド系指標が機能しない相場</h3>
     <p>レンジ相場（横ばい）、急激な乱高下（FOMC・CPIなど主要指標発表日）、出来高が著しく少ない閑散とした時間帯（ランチタイム等）。このような局面では<strong>ボットを停止することが最良の戦略</strong>です。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="callout-icon">📊</span>
+    <div class="callout-body">
+      <strong>MACDとMAの実戦上の違い：</strong> MACDはシグナル線による平滑化を内蔵しているため、ダマシに強く<code>gc_duration_minutes</code>のようなノイズフィルターとの相性が良い傾向があります。一方、生のMAクロス（特にEMA）は反応が速い分ノイズも拾いやすく、代わりに<code>macd_histogram_min</code>（%乖離フィルター）との組み合わせで威力を発揮します。過去データでの比較検証では、この特性の違いにより<strong>デイトレードはMA＋RSI、スイングはMACD＋KDJ</strong>という逆の結論になりました（<a href="#config-engine">戦略エンジンの切替</a>参照）。</div>
   </div>
 </section>
 
@@ -1154,7 +1349,7 @@ code {
   <div class="callout pro">
     <span class="callout-icon">✅</span>
     <div class="callout-body">
-      <strong>MACDデイトレードに向いている銘柄の条件：</strong><br>
+      <strong>トレンドフォロー型デイトレードに向いている銘柄の条件：</strong><br>
       1日の平均出来高 1,000万株以上 ／ 時価総額100億ドル以上 ／ ベータ値が高い（市場平均より値動きが大きい）
     </div>
   </div>
@@ -1227,10 +1422,11 @@ code {
 <section id="pro-params">
   <h2>パラメータ最適化の考え方</h2>
 
-  <h3>時間軸ごとの推奨パラメータ</h3>
+  <h3>時間軸ごとの推奨パラメータ（MACDモード）</h3>
+  <p style="font-size:13px;color:var(--text2)">MAモードを使う場合は、期間の値そのものはスイープ対象にせず<a href="#config-macd">業界標準値（EMA9/21・SMA20/50）</a>を採用してください。この表はMACDモードでの時間軸別の目安です。</p>
   <div class="param-wrap">
   <table class="param-table">
-    <thead><tr><th>時間軸</th><th>MACD</th><th>GC継続</th><th>損切</th><th>利確</th><th>保有上限</th></tr></thead>
+    <thead><tr><th>時間軸</th><th>MACD(fast-slow-signal)</th><th>GC継続</th><th>損切</th><th>利確</th><th>保有上限</th></tr></thead>
     <tbody>
       <tr>
         <td class="pdesc"><strong>1分足</strong><br><small>スキャルピング</small></td>

@@ -40,9 +40,10 @@ import pandas as pd
 BASE_DIR = Path(__file__).parent
 sys.path.insert(0, str(BASE_DIR))
 
-from config_loader import MacdConfig, EntryConfig, ExitConfig, OrderConfig, RiskConfig, OpendConfig
-from macd_engine import MacdEngine
-from kdj_engine import KdjEngine
+from config_loader import (
+    MacdConfig, EntryConfig, ExitConfig, OrderConfig, RiskConfig, OpendConfig, OscillatorConfig,
+)
+from engine_factory import build_trend_engine, build_oscillator_engine
 from bar_signals import compute_bar_signals, decide_trade
 from signal_tracker import SignalTracker
 from trade_engine import TradeEngine
@@ -90,16 +91,20 @@ def _load_data(symbol_id: str, start_date: str, end_date: str,
 
 def _replay(df: pd.DataFrame, macd_cfg: MacdConfig, entry_cfg: EntryConfig,
             exit_cfg: ExitConfig, order_cfg: OrderConfig, risk_cfg: RiskConfig,
+            osc_cfg: OscillatorConfig | None = None,
             hours_filter: tuple[dt_time, dt_time] | None = None,
             on_entry=None, on_exit=None) -> tuple[int, float]:
     """
     コア再生ループ。on_entry(price, qty, gc_duration, bar_time) /
     on_exit(price, qty, entry_price, hold_minutes, reason, daily_trades, bar_time, pnl)
     のコールバックで、CSV出力（run_backtest）か集計のみ（run_sweep）かを呼び出し側が選べる。
+    エンジンは engine_factory 経由で選択するため、trend_indicator="macd"かつ
+    oscillator.indicator="kdj"（既定）以外の組み合わせ（MA_RSI等）もそのまま再生できる
+    （fast_replay.pyはMACD/KDJの高速numpy実装専用のため、この組み合わせにはこちらを使う）。
     Returns: (確定取引数, 合計損益)
     """
-    macd_engine = MacdEngine(macd_cfg.fast_period, macd_cfg.slow_period, macd_cfg.signal_period)
-    kdj_engine = KdjEngine()
+    macd_engine = build_trend_engine(macd_cfg)
+    kdj_engine = build_oscillator_engine(osc_cfg or OscillatorConfig())
     tracker = SignalTracker(peak_confirmation_bars=exit_cfg.peak_confirmation_bars)
     risk_mgr = RiskManager(risk_cfg)
     trade_engine = TradeEngine(entry_cfg, exit_cfg, risk_mgr)
@@ -163,6 +168,7 @@ def run_backtest(symbol_id: str, start_date: str, end_date: str,
     order_cfg = OrderConfig(**cfg_dict["order"])
     risk_cfg = RiskConfig(**cfg_dict["risk"])
     opend_cfg = OpendConfig(**cfg_dict["opend"])
+    osc_cfg = OscillatorConfig(**cfg_dict.get("oscillator", {}))
 
     df = _load_data(symbol_id, start_date, end_date, macd_cfg, opend_cfg)
 
@@ -178,10 +184,20 @@ def run_backtest(symbol_id: str, start_date: str, end_date: str,
     def on_exit(price, qty, entry, hold, reason, daily_trades, bar_time, pnl):
         trade_log.log_exit(symbol_id, price, qty, entry, hold, reason, daily_trades, bar_time)
 
-    closed_trades, total_pnl = fast_replay(
-        df, macd_cfg, entry_cfg, exit_cfg, order_cfg, risk_cfg,
-        hours_filter=hours_filter, on_entry=on_entry, on_exit=on_exit,
-    )
+    is_default_engines = macd_cfg.trend_indicator == "macd" and osc_cfg.indicator == "kdj"
+    if is_default_engines:
+        # 既定の組み合わせ（MACD_KDJ）は検証済みの高速numpy実装を使う
+        closed_trades, total_pnl = fast_replay(
+            df, macd_cfg, entry_cfg, exit_cfg, order_cfg, risk_cfg,
+            hours_filter=hours_filter, on_entry=on_entry, on_exit=on_exit,
+        )
+    else:
+        # MA_RSI等、fast_replay.pyが対応していない組み合わせはengine_factory経由の
+        # スロー版（_replay）にフォールバックする
+        closed_trades, total_pnl = _replay(
+            df, macd_cfg, entry_cfg, exit_cfg, order_cfg, risk_cfg, osc_cfg=osc_cfg,
+            hours_filter=hours_filter, on_entry=on_entry, on_exit=on_exit,
+        )
 
     print(f"\nバックテスト完了: {symbol_id} {start_date} 〜 {end_date}")
     print(f"確定取引数（SELL）: {closed_trades}件")

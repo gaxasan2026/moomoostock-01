@@ -3,183 +3,186 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Day Trader</title>
+<title>Swing Trader</title>
 <style>
+:root{
+  /* macd_trader/docs のマニュアル（manual_ja.html等）と同じトークン体系・同じ配色に揃える。
+     マニュアルの「ライトテーマ」の値を採用: ページ全体は暖色寄りのオフホワイト地に
+     白いパネル、濃紺系の文字。MACD Traderアプリ本体（GitHub Dark風の暗い黒地 #0d1117）
+     とは対照的な、明るい配色にしている。
+     ヘッダーバーだけはマニュアル同様に常時固定のネイビー地（--header-bg）とし、
+     ページ本体の配色（ライト/ダーク）とは独立させている。 */
+  --bg:#f6f5f1; --panel:#ffffff; --panel2:#eeecea; --border:#dedad4; --border2:#dedad4;
+  --text:#1a2038; --text2:#5a637a; --text3:#8a93aa;
+  --accent:#1a5fc0; --accent-dim:#154e9e;
+  --accent-badge-bg:#e8f0fd; --accent-badge-border:#b8d4f5;
+  --good:#147a4e; --good-bg:#e4f5ec; --good-border:#b7e3c9; --good-bright:#147a4e; --good-glow:#147a4e;
+  --bad:#c0301a; --bad-bg:#fceae8; --bad-border:#f3c4b8;
+  --warn:#96640d; --warn-bg:#faf1de; --warn-border:#e6cd9c;
+  --header-bg:#0e2140;
+  --header-good:#5fd99a; --header-bad:#f0614a;
+  --white:#fff;
+}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0d1117;color:#e6edf3;font-size:13px;height:100vh;display:flex;flex-direction:column;overflow:hidden}
-a{color:#58a6ff}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);font-size:13px;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+a{color:var(--accent)}
 
-/* Header */
-#header{background:#161b22;border-bottom:1px solid #30363d;padding:0 16px;height:48px;display:flex;align-items:center;gap:12px;flex-shrink:0}
-#header h1{font-size:15px;font-weight:600;color:#e6edf3}
-#conn-dot{width:8px;height:8px;border-radius:50%;background:#3fb950;display:inline-block}
-#clock{color:#7d8590;font-size:12px;margin-left:auto}
-.today-pnl{font-size:12px;font-weight:600;color:#7d8590}
-.today-pnl.pnl-pos{color:#3fb950}
-.today-pnl.pnl-neg{color:#f85149}
-.hbtn{padding:5px 12px;border-radius:6px;border:1px solid #30363d;background:transparent;color:#e6edf3;cursor:pointer;font-size:12px}
-.hbtn:hover{background:#21262d}
-.hbtn.danger{border-color:#f85149;color:#f85149}
-.hbtn.danger:hover{background:#3d0f0f}
+/* Header — マニュアルのheaderと同じ固定ネイビー地（ページのライト/ダークに関わらず不変） */
+#header{background:var(--header-bg);padding:0 16px;height:48px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+#header h1{font-size:15px;font-weight:600;color:#fff}
+#header h1::before{content:"🕯";margin-right:6px}
+#conn-dot{width:8px;height:8px;border-radius:50%;background:var(--header-good);display:inline-block}
+#clock{color:rgba(255,255,255,.65);font-size:12px;margin-left:auto}
+.today-pnl{font-size:12px;font-weight:600;color:rgba(255,255,255,.65)}
+.today-pnl.pnl-pos{color:var(--header-good)}
+.today-pnl.pnl-neg{color:var(--header-bad)}
+.hbtn{padding:5px 12px;border-radius:6px;border:1px solid rgba(255,255,255,.25);background:transparent;color:#fff;cursor:pointer;font-size:12px}
+.hbtn:hover{background:rgba(255,255,255,.12)}
+.hbtn.danger{border-color:var(--header-bad);color:var(--header-bad)}
+.hbtn.danger:hover{background:rgba(240,97,74,.15)}
 
 /* Main layout */
 #main{display:flex;flex-direction:column;flex:1;overflow:hidden;padding:12px;gap:0}
 
 /* Symbol panel — 上下にドラッグでリサイズ可能（既定は内容に応じた高さ、ドラッグ後は固定高＋スクロール） */
-#symbol-panel{background:#161b22;border:1px solid #30363d;border-radius:8px;flex-shrink:0;display:flex;flex-direction:column;min-height:96px;margin-bottom:12px}
-#symbol-panel-header{display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid #30363d;gap:8px;flex-shrink:0}
-#symbol-panel-header h2{font-size:13px;font-weight:600;flex:1}
-.add-btn{padding:4px 12px;background:#238636;border:1px solid #2ea043;color:#fff;border-radius:6px;cursor:pointer;font-size:12px}
-.add-btn:hover{background:#2ea043}
+#symbol-panel{background:var(--panel);border:1px solid var(--border);border-radius:8px;flex-shrink:0;display:flex;flex-direction:column;min-height:96px;margin-bottom:12px}
+#symbol-panel-header{display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);gap:8px;flex-shrink:0}
+#symbol-panel-header h2{font-size:13px;font-weight:600;flex:1;color:var(--text)}
+.add-btn{padding:4px 12px;background:var(--accent);border:1px solid var(--accent);color:var(--white);border-radius:6px;cursor:pointer;font-size:12px}
+.add-btn:hover{background:var(--accent-dim);border-color:var(--accent-dim)}
 #symbol-table-wrap{overflow-y:auto;min-height:0}
 
 /* Symbol panel リサイザー（symbol-panelと#bottomの間、上下ドラッグ） */
 #symbol-resizer{height:9px;flex-shrink:0;cursor:row-resize;position:relative;margin-bottom:12px}
-#symbol-resizer::after{content:"";position:absolute;left:0;right:0;top:4px;height:1px;background:#30363d}
-#symbol-resizer:hover::after,#symbol-resizer.dragging::after{top:2px;height:5px;border-radius:3px;background:#58a6ff}
+#symbol-resizer::after{content:"";position:absolute;left:0;right:0;top:4px;height:1px;background:var(--border)}
+#symbol-resizer:hover::after,#symbol-resizer.dragging::after{top:2px;height:5px;border-radius:3px;background:var(--accent-badge-border)}
 body.resizing-v{cursor:row-resize;user-select:none}
 
 /* Table */
 table{width:100%;border-collapse:collapse}
-th{padding:8px 12px;text-align:left;color:#7d8590;font-weight:500;border-bottom:1px solid #21262d;white-space:nowrap}
-td{padding:8px 12px;border-bottom:1px solid #21262d;white-space:nowrap;vertical-align:middle}
+th{padding:8px 12px;text-align:left;color:var(--text2);font-weight:500;border-bottom:1px solid var(--border2);white-space:nowrap}
+td{padding:8px 12px;border-bottom:1px solid var(--border2);white-space:nowrap;vertical-align:middle}
 tr:last-child td{border-bottom:none}
 .num{text-align:right;font-family:monospace}
-.pos-gain{color:#3fb950}
-.pos-loss{color:#f85149}
-.pos-flat{color:#7d8590}
+.pos-gain{color:var(--good)}
+.pos-loss{color:var(--bad)}
+.pos-flat{color:var(--text2)}
 
 /* Status badges */
 .badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500}
-.badge-run{background:#0d2f19;color:#3fb950;border:1px solid #1a5e31}
-.badge-wait{background:#1a2f0f;color:#7ee787;border:1px solid #2e6020}
-.badge-hold{background:#0d2419;color:#58e67a;border:1px solid #1a5e40}
-.badge-stop{background:#1c2128;color:#7d8590;border:1px solid #30363d}
-.badge-gc{background:#071f47;color:#58a6ff;border:1px solid #1158c7}
-.badge-warn{background:#3d2a06;color:#e3b341;border:1px solid #6e4b0c}
-.badge-err{background:#3d0e0e;color:#f85149;border:1px solid #6e1a1a}
+.badge-run{background:var(--good-bg);color:var(--good);border:1px solid var(--good-border)}
+.badge-wait{background:var(--good-bg);color:var(--good-bright);border:1px solid var(--good-border)}
+.badge-hold{background:var(--good-bg);color:var(--good-glow);border:1px solid var(--good-border)}
+.badge-stop{background:var(--panel2);color:var(--text2);border:1px solid var(--border)}
+.badge-gc{background:var(--accent-badge-bg);color:var(--accent);border:1px solid var(--accent-badge-border)}
+.badge-warn{background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn-border)}
+.badge-err{background:var(--bad-bg);color:var(--bad);border:1px solid var(--bad-border)}
 
 /* Action buttons */
 .act{display:flex;gap:4px}
-.btn{padding:3px 8px;border-radius:4px;border:1px solid #30363d;background:transparent;cursor:pointer;font-size:11px;color:#e6edf3}
-.btn:hover{background:#21262d}
-.btn-start{color:#3fb950;border-color:#1a5e31}
-.btn-start:hover{background:#0d2f19}
-.btn-stop{color:#f85149;border-color:#5c1d1d}
-.btn-stop:hover{background:#3d0f0f}
-.btn-edit{color:#58a6ff;border-color:#0c3269}
-.btn-edit:hover{background:#071f47}
-.btn-del{color:#7d8590;border-color:#30363d}
-.btn-del:hover{color:#f85149;border-color:#5c1d1d;background:#3d0f0f}
+.btn{padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;cursor:pointer;font-size:11px;color:var(--text)}
+.btn:hover{background:var(--panel2)}
+.btn-start{color:var(--good);border-color:var(--good-border)}
+.btn-start:hover{background:var(--good-bg)}
+.btn-stop{color:var(--bad);border-color:var(--bad-border)}
+.btn-stop:hover{background:var(--bad-bg)}
+.btn-edit{color:var(--accent);border-color:var(--accent-badge-border)}
+.btn-edit:hover{background:var(--accent-badge-bg)}
+.btn-del{color:var(--text2);border-color:var(--border)}
+.btn-del:hover{color:var(--bad);border-color:var(--bad-border);background:var(--bad-bg)}
 .btn:disabled{opacity:0.4;cursor:not-allowed}
 
 /* Bottom panel */
 #bottom{display:flex;flex:1;gap:0;min-height:0}
-.panel{background:#161b22;border:1px solid #30363d;border-radius:8px;display:flex;flex-direction:column;flex:1;min-height:0}
-.panel-header{display:flex;align-items:center;padding:8px 14px;border-bottom:1px solid #30363d;flex-shrink:0}
-.tab-btn{padding:4px 12px;border:none;background:transparent;color:#7d8590;cursor:pointer;font-size:12px;border-bottom:2px solid transparent}
-.tab-btn.active{color:#e6edf3;border-bottom-color:#58a6ff}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:8px;display:flex;flex-direction:column;flex:1;min-height:0}
+.panel-header{display:flex;align-items:center;padding:8px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
+.tab-btn{padding:4px 12px;border:none;background:transparent;color:var(--text2);cursor:pointer;font-size:12px;border-bottom:2px solid transparent}
+.tab-btn.active{color:var(--text);border-bottom-color:var(--accent)}
 .panel-content{overflow-y:auto;overflow-x:auto;flex:1;padding:8px 0}
 
 /* Resizer — 取引履歴/ログ間のドラッグ幅調整ハンドル */
 #resizer{width:9px;flex-shrink:0;cursor:col-resize;position:relative}
-#resizer::after{content:"";position:absolute;top:0;bottom:0;left:4px;width:1px;background:#30363d}
-#resizer:hover::after,#resizer.dragging::after{left:2px;width:5px;border-radius:3px;background:#58a6ff}
+#resizer::after{content:"";position:absolute;top:0;bottom:0;left:4px;width:1px;background:var(--border)}
+#resizer:hover::after,#resizer.dragging::after{left:2px;width:5px;border-radius:3px;background:var(--accent-badge-border)}
 #resizer.dragging{cursor:col-resize}
 body.resizing{cursor:col-resize;user-select:none}
 
 /* Log */
-#log-panel{flex:0 0 420px;min-width:150px}
+#log-panel{flex:0 0 420px;min-width:220px}
 #log-box{font-family:"SFMono-Regular",Consolas,monospace;font-size:11px;line-height:1.6;overflow-y:auto;flex:1;padding:6px 12px}
 .log-line{display:flex;gap:8px;padding:1px 0}
-.log-time{color:#484f58;min-width:56px}
-.log-sym{min-width:56px;color:#7d8590}
-.log-INFO{color:#c9d1d9}
-.log-WARNING{color:#d29922}
-.log-ERROR{color:#f85149}
-.log-DEBUG{color:#484f58}
+.log-time{color:var(--text3);min-width:56px}
+.log-sym{min-width:56px;color:var(--text2)}
+.log-INFO{color:var(--text)}
+.log-WARNING{color:var(--warn)}
+.log-ERROR{color:var(--bad)}
+.log-DEBUG{color:var(--text3)}
 
 /* Trades */
 #trades-panel{flex:1;min-width:0}
 
 /* Modal */
-#overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:100}
+#overlay{position:fixed;inset:0;background:rgba(20,16,10,.45);display:flex;align-items:center;justify-content:center;z-index:100}
 #overlay.hidden{display:none}
-#modal{background:#161b22;border:1px solid #30363d;border-radius:10px;width:600px;max-height:90vh;display:flex;flex-direction:column}
+#modal{background:var(--panel);border:1px solid var(--border);border-radius:10px;width:600px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 12px 40px rgba(26,32,56,.18)}
 
 /* 即時売却 確認モーダル */
-#fs-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:200}
+#fs-overlay{position:fixed;inset:0;background:rgba(20,16,10,.45);display:flex;align-items:center;justify-content:center;z-index:200}
 #fs-overlay.hidden{display:none}
-#fs-modal{background:#161b22;border:1px solid #30363d;border-radius:10px;width:420px;padding:20px}
-#fs-modal h2{font-size:14px;font-weight:600;margin-bottom:12px}
-#fs-modal p{font-size:13px;line-height:1.6;color:#c9d1d9;margin-bottom:8px}
+#fs-modal{background:var(--panel);border:1px solid var(--border);border-radius:10px;width:420px;padding:20px;box-shadow:0 12px 40px rgba(26,32,56,.18)}
+#fs-modal h2{font-size:14px;font-weight:600;margin-bottom:12px;color:var(--text)}
+#fs-modal p{font-size:13px;line-height:1.6;color:var(--text2);margin-bottom:8px}
 #fs-market-note{font-size:12px;padding:8px 10px;border-radius:6px;margin-bottom:8px}
-#fs-market-note.warn{background:#3d2a06;color:#e3b341;border:1px solid #6e4b0c}
-#fs-market-note.ok{background:#0d2f19;color:#3fb950;border:1px solid #1a5e31}
+#fs-market-note.warn{background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn-border)}
+#fs-market-note.ok{background:var(--good-bg);color:var(--good);border:1px solid var(--good-border)}
 #fs-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:16px}
-.btn-fs-cancel{padding:8px 16px;border-radius:6px;border:1px solid #30363d;background:transparent;color:#e6edf3;cursor:pointer;font-size:13px}
-.btn-fs-cancel:hover{background:#21262d}
-.btn-fs-go{padding:8px 16px;border-radius:6px;border:none;background:#da3633;color:#fff;font-weight:600;cursor:pointer;font-size:13px}
-.btn-fs-go:hover{background:#f85149}
-#modal-head{display:flex;align-items:center;padding:14px 18px;border-bottom:1px solid #30363d}
-#modal-head h2{font-size:14px;font-weight:600;flex:1}
-#modal-close{background:none;border:none;color:#7d8590;font-size:18px;cursor:pointer;line-height:1}
-#modal-close:hover{color:#e6edf3}
-#modal-tabs{display:flex;border-bottom:1px solid #30363d;padding:0 18px}
-.mtab{padding:8px 14px;border:none;background:transparent;color:#7d8590;cursor:pointer;font-size:12px;border-bottom:2px solid transparent}
-.mtab.active{color:#e6edf3;border-bottom-color:#58a6ff}
+.btn-fs-cancel{padding:8px 16px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text);cursor:pointer;font-size:13px}
+.btn-fs-cancel:hover{background:var(--panel2)}
+.btn-fs-go{padding:8px 16px;border-radius:6px;border:none;background:var(--bad);color:#fff;font-weight:600;cursor:pointer;font-size:13px}
+.btn-fs-go:hover{filter:brightness(1.1)}
+#modal-head{display:flex;align-items:center;padding:14px 18px;border-bottom:1px solid var(--border)}
+#modal-head h2{font-size:14px;font-weight:600;flex:1;color:var(--text)}
+#modal-close{background:none;border:none;color:var(--text2);font-size:18px;cursor:pointer;line-height:1}
+#modal-close:hover{color:var(--text)}
+#modal-tabs{display:flex;border-bottom:1px solid var(--border);padding:0 18px}
+.mtab{padding:8px 14px;border:none;background:transparent;color:var(--text2);cursor:pointer;font-size:12px;border-bottom:2px solid transparent}
+.mtab.active{color:var(--text);border-bottom-color:var(--accent)}
 #modal-body{overflow-y:auto;padding:16px 18px;flex:1}
 .tab-section{display:none}
 .tab-section.active{display:block}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px}
 .form-group{display:flex;flex-direction:column;gap:4px}
 .form-group.full{grid-column:1/-1}
-label{font-size:11px;color:#7d8590}
-input[type=text],input[type=number],select{background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#e6edf3;padding:6px 10px;font-size:13px;width:100%}
-input[type=text]:focus,input[type=number]:focus,select:focus{outline:none;border-color:#58a6ff}
+label{font-size:11px;color:var(--text2)}
+input[type=text],input[type=number],select{background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 10px;font-size:13px;width:100%}
+input[type=text]:focus,input[type=number]:focus,select:focus{outline:none;border-color:var(--accent)}
 .toggle-row{display:flex;align-items:center;gap:8px;padding:6px 0}
-.hint{font-size:10px;color:#484f58;margin-top:2px}
-input[type=checkbox]{width:16px;height:16px;accent-color:#58a6ff}
-#modal-foot{display:flex;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid #30363d}
+.hint{font-size:10px;color:var(--text3);margin-top:2px}
+input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent)}
+#modal-foot{display:flex;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid var(--border)}
 .modal-btn{padding:6px 16px;border-radius:6px;font-size:13px;cursor:pointer}
-.modal-cancel{background:transparent;border:1px solid #30363d;color:#e6edf3}
-.modal-cancel:hover{background:#21262d}
-.modal-save{background:#238636;border:1px solid #2ea043;color:#fff}
-.modal-save:hover{background:#2ea043}
-
-/* Screening modal */
-#screen-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:100}
-#screen-overlay.hidden{display:none}
-#screen-modal{background:#161b22;border:1px solid #30363d;border-radius:10px;width:620px;max-height:90vh;display:flex;flex-direction:column}
-textarea,input[type=date]{background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#e6edf3;padding:6px 10px;font-size:13px;width:100%;font-family:inherit;resize:vertical}
-textarea:focus,input[type=date]:focus{outline:none;border-color:#58a6ff}
-.screen-job-row{display:flex;align-items:center;gap:10px;background:#0d1117;border:1px solid #30363d;border-radius:7px;padding:10px 14px;margin-bottom:8px;font-size:13px}
-.screen-job-row .sym{font-weight:600;width:90px;flex-shrink:0}
-.screen-job-row .prog{flex:1;color:#7d8590;font-size:12px}
-.screen-job-badge{font-size:11px;padding:2px 8px;border-radius:20px;white-space:nowrap}
-.screen-job-badge.running{background:#0e1f42;color:#4d8fe8}
-.screen-job-badge.done{background:#0a2b1a;color:#2dc47a}
-.screen-job-badge.error{background:#2e0e0a;color:#f0614a}
-.screen-job-row a{color:#58a6ff;font-size:12px;white-space:nowrap}
+.modal-cancel{background:transparent;border:1px solid var(--border);color:var(--text)}
+.modal-cancel:hover{background:var(--panel2)}
+.modal-save{background:var(--accent);border:1px solid var(--accent);color:var(--white)}
+.modal-save:hover{background:var(--accent-dim);border-color:var(--accent-dim)}
 
 /* Empty state */
-.empty{padding:32px;text-align:center;color:#484f58}
+.empty{padding:32px;text-align:center;color:var(--text3)}
 
 /* Toast */
-#toast{position:fixed;bottom:20px;right:20px;background:#21262d;border:1px solid #30363d;border-radius:8px;padding:10px 16px;font-size:12px;z-index:200;transition:opacity .3s}
+#toast{position:fixed;bottom:20px;right:20px;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px 16px;font-size:12px;z-index:200;transition:opacity .3s;box-shadow:0 8px 24px rgba(26,32,56,.15)}
 #toast.hidden{opacity:0;pointer-events:none}
-#toast.err{border-color:#5c1d1d;color:#f85149}
+#toast.err{border-color:var(--bad-border);color:var(--bad)}
 </style>
 </head>
 <body>
 
 <div id="header">
-  <h1>Day Trader</h1>
+  <h1>Swing Trader</h1>
   <span id="conn-dot"></span>
   <span id="today-pnl" class="today-pnl" title="米国取引日（ET）基準の実現損益">本日の損益: —</span>
   <span id="clock"></span>
   <button class="hbtn" onclick="location.href='/daily_pnl'">📊 日次損益</button>
-  <button class="hbtn" onclick="openScreenModal()">🔍 銘柄スクリーニング</button>
   <button class="hbtn danger" onclick="forceSellAll()">全銘柄（稼働中）の即時売却</button>
   <button class="hbtn danger" onclick="stopAll()">全停止</button>
 </div>
@@ -188,7 +191,7 @@ textarea:focus,input[type=date]:focus{outline:none;border-color:#58a6ff}
   <!-- Symbol Table -->
   <div id="symbol-panel">
     <div id="symbol-panel-header">
-      <h2>監視銘柄</h2>
+      <h2>監視銘柄（スイング）</h2>
       <button class="add-btn" onclick="openModal()">＋ 銘柄追加</button>
     </div>
     <div id="symbol-table-wrap">
@@ -196,7 +199,7 @@ textarea:focus,input[type=date]:focus{outline:none;border-color:#58a6ff}
       <thead>
         <tr>
           <th>銘柄</th><th>状態</th><th>現在値</th><th>ポジション</th>
-          <th>含み益</th><th>MACD Hist</th><th>本日取引</th><th>本日損益</th><th>操作</th>
+          <th>含み益</th><th>MACD Hist</th><th>累計取引</th><th>累計損益</th><th>操作</th>
         </tr>
       </thead>
       <tbody id="sym-tbody"></tbody>
@@ -218,7 +221,7 @@ textarea:focus,input[type=date]:focus{outline:none;border-color:#58a6ff}
             <tr>
               <th>時刻</th><th>銘柄</th><th>売買</th><th>価格</th>
               <th>株数</th><th>エントリー</th><th>損益(USD)</th><th>損益(%)</th>
-              <th>保有(分)</th><th>理由</th>
+              <th>保有(日)</th><th>理由</th>
             </tr>
           </thead>
           <tbody id="trades-tbody"></tbody>
@@ -253,52 +256,51 @@ textarea:focus,input[type=date]:focus{outline:none;border-color:#58a6ff}
       <button class="mtab" onclick="switchTab('exit')">エグジット</button>
       <button class="mtab" onclick="switchTab('risk')">リスク</button>
     </div>
-    <div id="symbol-count-banner" style="display:none;padding:8px 18px;font-size:12px;border-bottom:1px solid #30363d"></div>
+    <div id="symbol-count-banner" style="display:none;padding:8px 18px;font-size:12px;border-bottom:1px solid var(--border)"></div>
     <div id="modal-body">
       <!-- 基本設定 -->
       <div class="tab-section active" id="sec-basic">
         <div class="form-grid">
           <div class="form-group">
-            <label>銘柄コード</label>
+            <label>銘柄コード (symbol)</label>
             <input type="text" id="f-symbol" placeholder="US.AAPL" style="text-transform:uppercase">
             <span class="hint">moomoo形式: US.TICKER / HK.00700</span>
           </div>
           <div class="form-group">
-            <label>市場</label>
+            <label>市場 (market)</label>
             <select id="f-market"><option value="US">US（米国株）</option><option value="HK">HK（香港株）</option></select>
           </div>
           <div class="form-group">
-            <label>足種 (Timeframe)</label>
+            <label>足種 (timeframe)</label>
             <select id="f-timeframe">
-              <option value="K_1M">1分足</option><option value="K_5M">5分足</option>
-              <option value="K_15M">15分足</option><option value="K_30M">30分足</option>
-              <option value="K_60M">60分足</option>
+              <option value="K_60M">60分足</option><option value="K_DAY" selected>日足</option>
             </select>
+            <span class="hint">スイングトレード想定のため60分足・日足のみ</span>
           </div>
           <div class="form-group">
-            <label>注文種別</label>
+            <label>注文種別 (order_type)</label>
             <select id="f-order-type"><option value="market">成行</option><option value="limit">指値</option></select>
           </div>
           <div class="form-group">
-            <label>発注株数</label>
+            <label>発注株数 (quantity)</label>
             <input type="number" id="f-qty" value="5" min="1">
           </div>
           <div class="form-group">
-            <label>指値オフセット (%)</label>
+            <label>指値オフセット (limit_offset_pct / %)</label>
             <input type="number" id="f-limit-offset" value="0.02" step="0.01">
             <span class="hint">指値選択時のみ有効</span>
           </div>
           <div class="form-group full">
             <div class="toggle-row">
               <input type="checkbox" id="f-mock-data">
-              <label for="f-mock-data" style="font-size:13px;color:#e6edf3">モックデータ（オフライン・OpenD不要）</label>
+              <label for="f-mock-data" style="font-size:13px;color:var(--text)">モックデータ (mock_data)（オフライン・OpenD不要）</label>
             </div>
-            <span class="hint">チェック時は生成データで動作。OpenD接続テスト時はチェックを外してください</span>
+            <span class="hint">モックデータ生成は1分足前提のため、日足/60分足では正しく動作しません（既知の制約）</span>
           </div>
           <div class="form-group full">
             <div class="toggle-row">
               <input type="checkbox" id="f-paper" checked>
-              <label for="f-paper" style="font-size:13px;color:#e6edf3">Paper Trading（moomooシミュ注文）</label>
+              <label for="f-paper" style="font-size:13px;color:var(--text)">Paper Trading (paper_trading)（moomooシミュ注文）</label>
             </div>
             <span class="hint">チェック時はOpenDに接続しリアル価格を取得、注文はmoomooシミュ口座へ。本番取引はチェックを外す</span>
           </div>
@@ -320,15 +322,15 @@ textarea:focus,input[type=date]:focus{outline:none;border-color:#58a6ff}
             <select id="f-ma-method"><option value="ema">EMA</option><option value="sma">SMA</option></select>
           </div>
           <div class="form-group">
-            <label id="f-fast-label">短期EMA期間</label>
+            <label id="f-fast-label">短期EMA期間 (fast_period)</label>
             <input type="number" id="f-fast" value="12" min="2">
           </div>
           <div class="form-group">
-            <label id="f-slow-label">長期EMA期間</label>
+            <label id="f-slow-label">長期EMA期間 (slow_period)</label>
             <input type="number" id="f-slow" value="26" min="5">
           </div>
           <div class="form-group" id="f-signal-group">
-            <label>シグナル期間</label>
+            <label>シグナル期間 (signal_period)</label>
             <input type="number" id="f-signal" value="9" min="2">
             <span class="hint">MACD選択時のみ使用</span>
           </div>
@@ -339,32 +341,32 @@ textarea:focus,input[type=date]:focus{outline:none;border-color:#58a6ff}
       <div class="tab-section" id="sec-entry">
         <div class="form-grid">
           <div class="form-group">
-            <label>GC継続時間 (分)</label>
-            <input type="number" id="f-gc-dur" value="3.0" step="0.5" min="0">
-            <span class="hint">GCが何分続いたら買い</span>
+            <label>GC継続時間 (gc_duration_minutes / 分)</label>
+            <input type="number" id="f-gc-dur" value="2880" step="60" min="0">
+            <span class="hint">GCが何分続いたら買い（日足なら1440分=1日。日をまたいでも継続時間はリセットされません）</span>
           </div>
           <div class="form-group">
-            <label id="f-hist-min-label">MACD Hist 最小値</label>
+            <label id="f-hist-min-label">MACD Hist 最小値 (macd_histogram_min)</label>
             <input type="number" id="f-hist-min" value="0.0" step="0.001">
             <span class="hint" id="f-hist-min-hint">0 で無効（全GCを対象）</span>
           </div>
           <div class="form-group">
-            <label>出来高比率</label>
+            <label>出来高比率 (volume_surge_ratio)</label>
             <input type="number" id="f-vol-ratio" value="1.0" step="0.1" min="1">
             <span class="hint">1.0 で無効</span>
           </div>
           <div class="form-group">
-            <label>最大スプレッド (%)</label>
+            <label>最大スプレッド (max_spread_pct / %)</label>
             <input type="number" id="f-spread" value="0.1" step="0.01" min="0">
             <span class="hint">0 で無効</span>
           </div>
           <div class="form-group">
-            <label>取引時間帯 開始</label>
+            <label>取引時間帯 開始 (trading_hours_start)</label>
             <input type="time" id="f-hours-start" value="">
-            <span class="hint">空欄で時間帯制限なし</span>
+            <span class="hint">空欄で時間帯制限なし（日足では通常不要）</span>
           </div>
           <div class="form-group">
-            <label>取引時間帯 終了</label>
+            <label>取引時間帯 終了 (trading_hours_end)</label>
             <input type="time" id="f-hours-end" value="">
             <span class="hint">空欄で時間帯制限なし</span>
           </div>
@@ -380,7 +382,7 @@ textarea:focus,input[type=date]:focus{outline:none;border-color:#58a6ff}
             <input type="number" id="f-rsi-period" value="14" min="2">
           </div>
           <div class="form-group">
-            <label id="f-kdj-max-d-label">オシレータ上限（KDJ %D）</label>
+            <label id="f-kdj-max-d-label">オシレータ上限（KDJ %D） (kdj_max_d)</label>
             <input type="number" id="f-kdj-max-d" value="0" step="5" min="0" max="100">
             <span class="hint" id="f-kdj-max-d-hint">0で無効。設定するとKDJ %Dがこの値未満かつ%K&gt;%Dの時のみエントリー</span>
           </div>
@@ -391,43 +393,44 @@ textarea:focus,input[type=date]:focus{outline:none;border-color:#58a6ff}
       <div class="tab-section" id="sec-exit">
         <div class="form-grid">
           <div class="form-group">
-            <label>ピーク下落率 (%)</label>
-            <input type="number" id="f-peak-drop" value="1.5" step="0.1" min="0">
+            <label>ピーク下落率 (peak_drop_pct / %)</label>
+            <input type="number" id="f-peak-drop" value="5.0" step="0.5" min="0">
             <span class="hint">0 で無効</span>
           </div>
           <div class="form-group">
-            <label>ピーク下落継続 (分)</label>
-            <input type="number" id="f-peak-dur" value="5.0" step="0.5" min="0">
-            <span class="hint">0 で無効</span>
+            <label>ピーク下落継続 (peak_drop_duration_minutes / 分)</label>
+            <input type="number" id="f-peak-dur" value="2880" step="60" min="0">
+            <span class="hint">0 で無効（1440分=1日）</span>
           </div>
           <div class="form-group">
-            <label>ピーク確定本数</label>
-            <input type="number" id="f-peak-bars" value="3" min="1">
+            <label>ピーク確定本数 (peak_confirmation_bars)</label>
+            <input type="number" id="f-peak-bars" value="2" min="1">
+            <span class="hint">日足なら2本＝2営業日、高値更新なしでピーク確定</span>
           </div>
           <div class="form-group">
-            <label>DC継続時間 (分)</label>
-            <input type="number" id="f-dc-dur" value="0.0" step="0.5" min="0">
+            <label>DC継続時間 (dc_duration_minutes / 分)</label>
+            <input type="number" id="f-dc-dur" value="0.0" step="60" min="0">
             <span class="hint">0 でDC発生直後に即売り</span>
           </div>
           <div class="form-group">
-            <label>利確ライン (%)</label>
-            <input type="number" id="f-tp" value="3.0" step="0.1" min="0">
+            <label>利確ライン (take_profit_pct / %)</label>
+            <input type="number" id="f-tp" value="10.0" step="0.5" min="0">
             <span class="hint">0 で無効</span>
           </div>
           <div class="form-group">
-            <label>損切りライン (%)</label>
-            <input type="number" id="f-sl" value="1.5" step="0.1" min="0">
-            <span class="hint">0 で無効</span>
+            <label>損切りライン (stop_loss_pct / %)</label>
+            <input type="number" id="f-sl" value="5.0" step="0.5" min="0">
+            <span class="hint">0 で無効。日足はギャップで想定超の損失になり得ます</span>
           </div>
           <div class="form-group">
-            <label>最大保有時間 (分)</label>
-            <input type="number" id="f-max-hold" value="60.0" step="5" min="0">
-            <span class="hint">0 で無効</span>
+            <label>最大保有時間 (max_hold_minutes / 分)</label>
+            <input type="number" id="f-max-hold" value="20160" step="1440" min="0">
+            <span class="hint">0 で無効（20160分=14日）</span>
           </div>
           <div class="form-group full">
             <div class="toggle-row">
               <input type="checkbox" id="f-dc" checked>
-              <label for="f-dc" style="font-size:13px;color:#e6edf3">デッドクロスで売り</label>
+              <label for="f-dc" style="font-size:13px;color:var(--text)">デッドクロスで売り (dead_cross)</label>
             </div>
           </div>
         </div>
@@ -437,30 +440,30 @@ textarea:focus,input[type=date]:focus{outline:none;border-color:#58a6ff}
       <div class="tab-section" id="sec-risk">
         <div class="form-grid">
           <div class="form-group">
-            <label>日次最大取引回数</label>
-            <input type="number" id="f-max-trades" value="10" min="0">
-            <span class="hint">0 で無制限</span>
+            <label>日次最大取引回数 (max_daily_trades)</label>
+            <input type="number" id="f-max-trades" value="3" min="0">
+            <span class="hint">0 で無制限（スイングでは発生頻度が低く実質効きにくい）</span>
           </div>
           <div class="form-group">
-            <label>日次最大損失 (%)</label>
-            <input type="number" id="f-max-loss" value="3.0" step="0.1" min="0">
+            <label>日次最大損失 (max_daily_loss_pct / %)</label>
+            <input type="number" id="f-max-loss" value="5.0" step="0.5" min="0">
             <span class="hint">0 で無効</span>
           </div>
           <div class="form-group">
-            <label>クールダウン (分)</label>
+            <label>クールダウン (cooldown_minutes / 分)</label>
             <input type="number" id="f-cooldown" value="5.0" step="0.5" min="0">
           </div>
           <div class="form-group">
-            <label>最大ポジション金額 (USD)</label>
+            <label>最大ポジション金額 (max_position_value / USD)</label>
             <input type="number" id="f-max-pos" value="0" step="100" min="0">
             <span class="hint">0 で無制限</span>
           </div>
           <div class="form-group">
-            <label>OpenD ホスト</label>
+            <label>OpenD ホスト (host)</label>
             <input type="text" id="f-opend-host" value="127.0.0.1">
           </div>
           <div class="form-group">
-            <label>OpenD ポート</label>
+            <label>OpenD ポート (port)</label>
             <input type="number" id="f-opend-port" value="11111">
           </div>
         </div>
@@ -487,59 +490,6 @@ textarea:focus,input[type=date]:focus{outline:none;border-color:#58a6ff}
   </div>
 </div>
 
-<!-- Screening Modal -->
-<div id="screen-overlay" class="hidden" onclick="if(event.target===this)closeScreenModal()">
-  <div id="screen-modal">
-    <div id="modal-head">
-      <h2>🔍 銘柄スクリーニング</h2>
-      <button id="modal-close" onclick="closeScreenModal()">✕</button>
-    </div>
-    <div id="modal-body">
-      <div class="form-group">
-        <label>銘柄コード（複数可、カンマまたは改行区切り）</label>
-        <textarea id="screen-symbols" rows="3" placeholder="US.AAPL, US.GOOGL, US.MSFT"></textarea>
-        <span class="hint">moomoo形式: US.TICKER / HK.00700</span>
-      </div>
-      <div class="form-grid">
-        <div class="form-group">
-          <label>開始日</label>
-          <select id="screen-period">
-            <option value="7">1週間前から</option>
-            <option value="30">1ヶ月前から</option>
-            <option value="90" selected>3ヶ月前から</option>
-            <option value="180">6ヶ月前から</option>
-            <option value="365">1年前から</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>終了日</label>
-          <input type="date" id="screen-end-date">
-        </div>
-        <div class="form-group">
-          <label>市場</label>
-          <select id="screen-market">
-            <option value="US">US（米国株）</option>
-            <option value="HK">HK（香港株）</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>想定元本 (USD)</label>
-          <input type="number" id="screen-position-value" value="800" step="100" min="0">
-        </div>
-      </div>
-      <div class="callout" style="background:#1a2540;border:1px solid #253045;border-radius:7px;padding:10px 14px;margin-top:8px;font-size:12.5px;color:#8a97b5">
-        💡 1銘柄あたり数分かかります（16パターンのバックテストを実行）。複数銘柄を指定した場合は並行して実行されます。
-      </div>
-
-      <div id="screen-jobs" style="margin-top:16px"></div>
-    </div>
-    <div id="modal-foot">
-      <button class="modal-btn modal-cancel" onclick="closeScreenModal()">閉じる</button>
-      <button class="modal-btn modal-save" onclick="startScreening()">スクリーニング開始</button>
-    </div>
-  </div>
-</div>
-
 <div id="toast" class="hidden"></div>
 
 <script>
@@ -553,9 +503,9 @@ async function init() {
   updateClock();
   setInterval(updateClock, 1000);
   await loadSymbols();
-  setInterval(pollStatus, 2000);
-  setInterval(pollTrades, 3000);
-  setInterval(pollLogs, 1000);
+  setInterval(pollStatus, 5000);
+  setInterval(pollTrades, 5000);
+  setInterval(pollLogs, 3000);
   setInterval(pollTodayPnl, 30000);
   pollStatus();
   pollTrades();
@@ -584,7 +534,7 @@ function initResizer() {
   const resizer = document.getElementById('resizer');
   const logPanel = document.getElementById('log-panel');
   const bottom = document.getElementById('bottom');
-  const STORAGE_KEY = 'macdTraderLogPanelWidth';
+  const STORAGE_KEY = 'swingTraderLogPanelWidth';
   const MIN_LOG_WIDTH = 150;
   const MIN_TRADES_WIDTH = 150;
 
@@ -625,7 +575,7 @@ function initResizer() {
 function initVerticalResizer() {
   const resizer = document.getElementById('symbol-resizer');
   const symbolPanel = document.getElementById('symbol-panel');
-  const STORAGE_KEY = 'macdTraderSymbolPanelHeight';
+  const STORAGE_KEY = 'swingTraderSymbolPanelHeight';
   const MIN_HEIGHT = 96;
 
   const saved = parseInt(localStorage.getItem(STORAGE_KEY), 10);
@@ -709,7 +659,7 @@ function renderSymbols() {
     }
 
     return `<tr>
-      <td><strong>${s.symbol}</strong><br><span style="color:#7d8590;font-size:11px">${s.market} · ${s.macd.timeframe} · ${s.order.mock_data ? 'モック' : s.order.paper_trading ? 'Paper' : '本番'}</span>${posNoteHtml}</td>
+      <td><strong>${s.symbol}</strong><br><span style="color:var(--text2);font-size:11px">${s.market} · ${s.macd.timeframe} · ${s.order.mock_data ? 'モック' : s.order.paper_trading ? 'Paper' : '本番'}</span>${posNoteHtml}</td>
       <td>${badgeHtml}</td>
       <td class="num">${price}</td>
       <td class="num">${entryStr}</td>
@@ -739,7 +689,7 @@ async function startBot(sid) {
   const d = await r.json();
   if (!r.ok) return showToast(d.error, true);
   showToast(`${sid} 起動しました`);
-  setTimeout(pollStatus, 500);
+  setTimeout(pollStatus, 1000);
 }
 
 async function stopBot(sid) {
@@ -840,7 +790,7 @@ async function pollStatus() {
     statuses = await r.json();
     renderSymbols();
   } catch(e) {
-    document.getElementById('conn-dot').style.background = '#f85149';
+    document.getElementById('conn-dot').style.background = 'var(--header-bad)';
   }
 }
 
@@ -877,17 +827,18 @@ function renderTrades(trades) {
     const pctStr = t.pnl_pct !== null && t.pnl_pct !== undefined
       ? `<span class="${t.pnl_pct >= 0 ? 'pos-gain' : 'pos-loss'}">${t.pnl_pct >= 0 ? '+' : ''}${t.pnl_pct.toFixed(2)}%</span>`
       : '—';
+    const holdDays = t.hold_minutes > 0 ? (t.hold_minutes / 1440).toFixed(1) + '日' : '—';
     return `<tr>
       <td>${t.timestamp}</td>
       <td><strong>${t.symbol}</strong></td>
-      <td><span style="color:${isBuy ? '#3fb950' : '#f85149'};font-weight:600">${t.action}</span></td>
+      <td><span style="color:${isBuy ? 'var(--good)' : 'var(--bad)'};font-weight:600">${t.action}</span></td>
       <td class="num">$${t.price.toFixed(4)}</td>
       <td class="num">${t.quantity}</td>
       <td class="num">${isBuy ? '—' : '$' + t.entry_price.toFixed(4)}</td>
       <td class="num">${pnlStr}</td>
       <td class="num">${pctStr}</td>
-      <td class="num">${t.hold_minutes > 0 ? t.hold_minutes + '分' : '—'}</td>
-      <td style="color:#7d8590;max-width:140px;overflow:hidden;text-overflow:ellipsis">${t.exit_reason || '—'}</td>
+      <td class="num">${holdDays}</td>
+      <td style="color:var(--text2);max-width:140px;overflow:hidden;text-overflow:ellipsis">${t.exit_reason || '—'}</td>
     </tr>`;
   }).join('');
 }
@@ -903,7 +854,6 @@ function appendLog(item) {
     `<span class="log-${item.level || 'INFO'}">${escHtml(item.message)}</span>`;
   box.appendChild(div);
   box.scrollTop = box.scrollHeight;
-  // Keep max 500 lines
   while (box.children.length > 500) box.removeChild(box.firstChild);
 }
 
@@ -926,15 +876,14 @@ function openModal(symbolId) {
   const banner = document.getElementById('symbol-count-banner');
   if (!symbolId) {
     const count = symbols.length;
-    const limit = 100;
     const warn = count >= 8;
-    const color = count >= 15 ? '#f85149' : count >= 8 ? '#d29922' : '#3fb950';
+    const color = count >= 15 ? 'var(--bad)' : count >= 8 ? 'var(--warn)' : 'var(--good)';
     const icon = count >= 15 ? '🔴' : count >= 8 ? '⚠️' : 'ℹ️';
     banner.style.display = 'block';
-    banner.style.background = count >= 8 ? (count >= 15 ? '#3d1f1f' : '#2d2208') : '#161b22';
+    banner.style.background = count >= 8 ? (count >= 15 ? 'var(--bad-bg)' : '#fdf4e0') : 'var(--panel)';
     banner.style.color = color;
-    banner.innerHTML = `${icon} 現在 <strong>${count}</strong> 銘柄登録中（理論上限: ${limit}銘柄 × K線種類数）`
-      + (count >= 8 ? `<br><span style="color:#7d8590">　接続が不安定になる場合は銘柄数を減らしてください（推奨: 10銘柄以内）</span>` : '');
+    banner.innerHTML = `${icon} 現在 <strong>${count}</strong> 銘柄登録中`
+      + (count >= 8 ? `<br><span style="color:var(--text2)">　接続が不安定になる場合は銘柄数を減らしてください（推奨: 10銘柄以内）</span>` : '');
   } else {
     banner.style.display = 'none';
   }
@@ -964,9 +913,9 @@ function onTrendIndicatorChange() {
   const isMa = document.getElementById('f-trend-indicator').value === 'ma';
   document.getElementById('f-ma-method-group').style.display = isMa ? '' : 'none';
   document.getElementById('f-signal-group').style.display = isMa ? 'none' : '';
-  document.getElementById('f-fast-label').textContent = isMa ? '短期期間' : '短期EMA期間';
-  document.getElementById('f-slow-label').textContent = isMa ? '長期期間' : '長期EMA期間';
-  document.getElementById('f-hist-min-label').textContent = isMa ? '乖離幅フィルター (%)' : 'MACD Hist 最小値';
+  document.getElementById('f-fast-label').textContent = isMa ? '短期期間 (fast_period)' : '短期EMA期間 (fast_period)';
+  document.getElementById('f-slow-label').textContent = isMa ? '長期期間 (slow_period)' : '長期EMA期間 (slow_period)';
+  document.getElementById('f-hist-min-label').textContent = isMa ? '乖離幅フィルター (%)' : 'MACD Hist 最小値 (macd_histogram_min)';
   document.getElementById('f-hist-min-hint').textContent = isMa
     ? '0で無効。短期線と長期線の乖離が価格の何%以上でエントリーするか（例: 0.3）'
     : '0 で無効（全GCを対象）';
@@ -975,7 +924,7 @@ function onTrendIndicatorChange() {
 function onOscillatorIndicatorChange() {
   const isRsi = document.getElementById('f-oscillator-indicator').value === 'rsi';
   document.getElementById('f-rsi-period-group').style.display = isRsi ? '' : 'none';
-  document.getElementById('f-kdj-max-d-label').textContent = isRsi ? 'オシレータ上限（RSI）' : 'オシレータ上限（KDJ %D）';
+  document.getElementById('f-kdj-max-d-label').textContent = isRsi ? 'オシレータ上限（RSI）' : 'オシレータ上限（KDJ %D） (kdj_max_d)';
   document.getElementById('f-kdj-max-d-hint').textContent = isRsi
     ? '0で無効。設定するとRSIがこの値未満の時のみエントリー（例: 70）'
     : '0で無効。設定するとKDJ %Dがこの値未満かつ%K>%Dの時のみエントリー';
@@ -984,7 +933,7 @@ function onOscillatorIndicatorChange() {
 function resetForm() {
   document.getElementById('f-symbol').value = '';
   document.getElementById('f-market').value = 'US';
-  document.getElementById('f-timeframe').value = 'K_1M';
+  document.getElementById('f-timeframe').value = 'K_DAY';
   document.getElementById('f-order-type').value = 'market';
   document.getElementById('f-qty').value = '5';
   document.getElementById('f-limit-offset').value = '0.02';
@@ -995,7 +944,7 @@ function resetForm() {
   document.getElementById('f-fast').value = '12';
   document.getElementById('f-slow').value = '26';
   document.getElementById('f-signal').value = '9';
-  document.getElementById('f-gc-dur').value = '3.0';
+  document.getElementById('f-gc-dur').value = '2880';
   document.getElementById('f-hist-min').value = '0.0';
   document.getElementById('f-vol-ratio').value = '1.0';
   document.getElementById('f-spread').value = '0.1';
@@ -1006,16 +955,16 @@ function resetForm() {
   document.getElementById('f-kdj-max-d').value = '0';
   onTrendIndicatorChange();
   onOscillatorIndicatorChange();
-  document.getElementById('f-peak-drop').value = '1.5';
-  document.getElementById('f-peak-dur').value = '5.0';
-  document.getElementById('f-peak-bars').value = '3';
+  document.getElementById('f-peak-drop').value = '5.0';
+  document.getElementById('f-peak-dur').value = '2880';
+  document.getElementById('f-peak-bars').value = '2';
   document.getElementById('f-dc').checked = true;
   document.getElementById('f-dc-dur').value = '0.0';
-  document.getElementById('f-tp').value = '3.0';
-  document.getElementById('f-sl').value = '1.5';
-  document.getElementById('f-max-hold').value = '60.0';
-  document.getElementById('f-max-trades').value = '10';
-  document.getElementById('f-max-loss').value = '3.0';
+  document.getElementById('f-tp').value = '10.0';
+  document.getElementById('f-sl').value = '5.0';
+  document.getElementById('f-max-hold').value = '20160';
+  document.getElementById('f-max-trades').value = '3';
+  document.getElementById('f-max-loss').value = '5.0';
   document.getElementById('f-cooldown').value = '5.0';
   document.getElementById('f-max-pos').value = '0';
   document.getElementById('f-opend-host').value = '127.0.0.1';
@@ -1026,7 +975,7 @@ function fillForm(cfg) {
   document.getElementById('f-symbol').value = cfg.symbol || '';
   document.getElementById('f-market').value = cfg.market || 'US';
   const m = cfg.macd || {};
-  document.getElementById('f-timeframe').value = m.timeframe || 'K_1M';
+  document.getElementById('f-timeframe').value = m.timeframe || 'K_DAY';
   document.getElementById('f-trend-indicator').value = m.trend_indicator || 'macd';
   document.getElementById('f-ma-method').value = m.ma_method || 'ema';
   document.getElementById('f-fast').value = m.fast_period || 12;
@@ -1040,7 +989,7 @@ function fillForm(cfg) {
   document.getElementById('f-mock-data').checked = o.mock_data === true;
   document.getElementById('f-paper').checked = o.paper_trading !== false;
   const en = cfg.entry || {};
-  document.getElementById('f-gc-dur').value = en.gc_duration_minutes ?? 3.0;
+  document.getElementById('f-gc-dur').value = en.gc_duration_minutes ?? 2880;
   document.getElementById('f-hist-min').value = en.macd_histogram_min ?? 0.0;
   document.getElementById('f-vol-ratio').value = en.volume_surge_ratio ?? 1.0;
   document.getElementById('f-spread').value = en.max_spread_pct ?? 0.1;
@@ -1052,17 +1001,17 @@ function fillForm(cfg) {
   document.getElementById('f-rsi-period').value = osc.rsi_period ?? 14;
   onOscillatorIndicatorChange();
   const ex = cfg.exit || {};
-  document.getElementById('f-peak-drop').value = ex.peak_drop_pct ?? 1.5;
-  document.getElementById('f-peak-dur').value = ex.peak_drop_duration_minutes ?? 5.0;
-  document.getElementById('f-peak-bars').value = ex.peak_confirmation_bars ?? 3;
+  document.getElementById('f-peak-drop').value = ex.peak_drop_pct ?? 5.0;
+  document.getElementById('f-peak-dur').value = ex.peak_drop_duration_minutes ?? 2880;
+  document.getElementById('f-peak-bars').value = ex.peak_confirmation_bars ?? 2;
   document.getElementById('f-dc').checked = ex.dead_cross !== false;
   document.getElementById('f-dc-dur').value = ex.dc_duration_minutes ?? 0.0;
-  document.getElementById('f-tp').value = ex.take_profit_pct ?? 3.0;
-  document.getElementById('f-sl').value = ex.stop_loss_pct ?? 1.5;
-  document.getElementById('f-max-hold').value = ex.max_hold_minutes ?? 60.0;
+  document.getElementById('f-tp').value = ex.take_profit_pct ?? 10.0;
+  document.getElementById('f-sl').value = ex.stop_loss_pct ?? 5.0;
+  document.getElementById('f-max-hold').value = ex.max_hold_minutes ?? 20160;
   const r = cfg.risk || {};
-  document.getElementById('f-max-trades').value = r.max_daily_trades ?? 10;
-  document.getElementById('f-max-loss').value = r.max_daily_loss_pct ?? 3.0;
+  document.getElementById('f-max-trades').value = r.max_daily_trades ?? 3;
+  document.getElementById('f-max-loss').value = r.max_daily_loss_pct ?? 5.0;
   document.getElementById('f-cooldown').value = r.cooldown_minutes ?? 5.0;
   document.getElementById('f-max-pos').value = r.max_position_value ?? 0;
   const op = cfg.opend || {};
@@ -1164,113 +1113,6 @@ function showToast(msg, isErr) {
   el.className = isErr ? 'err' : '';
   clearTimeout(_toastTimer);
   _toastTimer = setTimeout(() => el.classList.add('hidden'), 3000);
-}
-
-// ─── Symbol Screening ────────────────────────────────────────────
-let screenJobs = {};       // job_id -> {symbol, status, progress, report_url, error}
-let screenPollTimer = null;
-
-function formatLocalDate(d) {
-  // toISOString()はUTCに変換するため、JSTなど+側のタイムゾーンでは
-  // 日付が1日前にずれてしまう。ローカルの年月日をそのまま使う。
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-function openScreenModal() {
-  document.getElementById('screen-symbols').value = '';
-  document.getElementById('screen-jobs').innerHTML = '';
-  screenJobs = {};
-  document.getElementById('screen-end-date').value = formatLocalDate(new Date());
-  document.getElementById('overlay') && closeModal();
-  document.getElementById('screen-overlay').classList.remove('hidden');
-}
-
-function closeScreenModal() {
-  document.getElementById('screen-overlay').classList.add('hidden');
-  if (screenPollTimer) { clearInterval(screenPollTimer); screenPollTimer = null; }
-}
-
-function parseScreenSymbols() {
-  const raw = document.getElementById('screen-symbols').value;
-  const parts = raw.split(/[,\n]/).map(s => s.trim().toUpperCase()).filter(s => s.length > 0);
-  return [...new Set(parts)];
-}
-
-function computeStartDate(daysAgo, endDateStr) {
-  const end = new Date(endDateStr + 'T00:00:00');
-  const start = new Date(end);
-  start.setDate(start.getDate() - daysAgo);
-  return formatLocalDate(start);
-}
-
-async function startScreening() {
-  const syms = parseScreenSymbols();
-  if (syms.length === 0) return showToast('銘柄コードを入力してください', true);
-
-  const endDate = document.getElementById('screen-end-date').value;
-  const daysAgo = parseInt(document.getElementById('screen-period').value);
-  const startDate = computeStartDate(daysAgo, endDate);
-  const market = document.getElementById('screen-market').value;
-  const targetValue = parseFloat(document.getElementById('screen-position-value').value);
-
-  for (const sym of syms) {
-    const r = await fetch('/api/screen', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        symbol: sym, start_date: startDate, end_date: endDate,
-        market: market, target_position_value: targetValue,
-      }),
-    });
-    const d = await r.json();
-    if (!r.ok) {
-      showToast(`${sym}: ${d.error}`, true);
-      continue;
-    }
-    screenJobs[d.job_id] = {symbol: sym, status: 'running', progress: '開始しています...', report_url: null, error: null};
-  }
-  renderScreenJobs();
-  if (!screenPollTimer) {
-    screenPollTimer = setInterval(pollScreenJobs, 3000);
-  }
-  pollScreenJobs();
-}
-
-async function pollScreenJobs() {
-  const ids = Object.keys(screenJobs);
-  if (ids.length === 0) return;
-  await Promise.all(ids.map(async (jobId) => {
-    if (screenJobs[jobId].status !== 'running') return;
-    const r = await fetch(`/api/screen/${jobId}`);
-    if (!r.ok) return;
-    const d = await r.json();
-    screenJobs[jobId].status = d.status;
-    screenJobs[jobId].progress = d.progress;
-    screenJobs[jobId].report_url = d.report_url;
-    screenJobs[jobId].error = d.error;
-  }));
-  renderScreenJobs();
-}
-
-function renderScreenJobs() {
-  const container = document.getElementById('screen-jobs');
-  const rows = Object.entries(screenJobs).map(([jobId, j]) => {
-    let badge, extra;
-    if (j.status === 'running') {
-      badge = '<span class="screen-job-badge running">実行中</span>';
-      extra = `<span class="prog">${j.progress}</span>`;
-    } else if (j.status === 'done') {
-      badge = '<span class="screen-job-badge done">完了</span>';
-      extra = `<a href="${j.report_url}" target="_blank">📄 レポートを開く</a>`;
-    } else {
-      badge = '<span class="screen-job-badge error">エラー</span>';
-      extra = `<span class="prog">${j.error || ''}</span>`;
-    }
-    return `<div class="screen-job-row"><span class="sym">${j.symbol}</span>${badge}${extra}</div>`;
-  });
-  container.innerHTML = rows.join('');
 }
 
 init();

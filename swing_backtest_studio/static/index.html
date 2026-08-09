@@ -1,50 +1,31 @@
 <meta charset="utf-8">
-<title>Day Backtest Studio</title>
+<title>Swing Backtest Studio</title>
 <style>
+/* Swing Trader本体・マニュアルと同じライトテーマトークン（macd_trader/docsのマニュアル由来） */
 :root{
-  /* macd_trader（本体アプリ）のGitHub Dark風パレットに合わせる。
-     bg/panel/border/text/good/badはmacd_trader/static/index.htmlと同じ値、
-     accent/warnもmacd_trader側の実際の使用色（#58a6ff・#e3b341）に揃えている。 */
-  --bg:#0d1117; --panel:#161b22; --panel2:#1c2128; --border:#30363d; --border2:#3d444d;
-  --text:#e6edf3; --text2:#7d8590; --text3:#484f58;
-  --accent:#58a6ff; --accent-soft:rgba(88,166,255,.14); --accent-border:rgba(88,166,255,.4);
-  --good:#3fb950; --good-soft:rgba(63,185,80,.14);
-  --bad:#f85149; --bad-soft:rgba(248,81,73,.14);
-  --warn:#e3b341; --warn-soft:rgba(227,179,65,.14);
+  --bg:#f6f5f1; --panel:#ffffff; --panel2:#eeecea; --border:#dedad4; --border2:#c9c4ba;
+  --text:#1a2038; --text2:#5a637a; --text3:#8a93aa;
+  --accent:#1a5fc0; --accent-soft:rgba(26,95,192,.08); --accent-border:rgba(26,95,192,.3);
+  --good:#147a4e; --good-soft:rgba(20,122,78,.10);
+  --bad:#c0301a; --bad-soft:rgba(192,48,26,.08);
+  --warn:#96640d; --warn-soft:rgba(150,100,13,.10);
+  --header-bg:#0e2140;
   --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
   --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Hiragino Sans,sans-serif;
-}
-:root[data-theme="light"]{
-  --bg:#f6f5f2; --panel:#ffffff; --panel2:#f0eee9; --border:#d8dee4; --border2:#c6ccd1;
-  --text:#1f2328; --text2:#59636e; --text3:#818b93;
-  --accent:#1158c7; --accent-soft:rgba(17,88,199,.10); --accent-border:rgba(17,88,199,.35);
-  --good:#1a7f37; --good-soft:rgba(26,127,55,.10);
-  --bad:#cf222e; --bad-soft:rgba(207,34,46,.10);
-  --warn:#9a6700; --warn-soft:rgba(154,103,0,.10);
-}
-@media (prefers-color-scheme:light){
-  :root:not([data-theme="dark"]){
-    --bg:#f6f5f2; --panel:#ffffff; --panel2:#f0eee9; --border:#d8dee4; --border2:#c6ccd1;
-    --text:#1f2328; --text2:#59636e; --text3:#818b93;
-    --accent:#1158c7; --accent-soft:rgba(17,88,199,.10); --accent-border:rgba(17,88,199,.35);
-    --good:#1a7f37; --good-soft:rgba(26,127,55,.10);
-    --bad:#cf222e; --bad-soft:rgba(207,34,46,.10);
-    --warn:#9a6700; --warn-soft:rgba(154,103,0,.10);
-  }
 }
 *{box-sizing:border-box}
 body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:13px;line-height:1.5}
 .app{max-width:1360px;margin:0 auto;padding:20px 24px 60px}
 
 .hero{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 20px;
-  background:var(--panel);border:1px solid var(--border);border-radius:12px;margin-bottom:18px}
+  background:var(--header-bg);border-radius:12px;margin-bottom:18px}
 .hero-left{display:flex;align-items:center;gap:14px}
-.hero-icon{width:38px;height:38px;border-radius:10px;background:var(--accent-soft);border:1px solid var(--accent-border);
+.hero-icon{width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);
   display:flex;align-items:center;justify-content:center;font-size:18px;flex:none}
-.hero h1{font-size:16px;font-weight:650;margin:0;letter-spacing:.1px}
-.hero p{margin:2px 0 0;font-size:12px;color:var(--text2)}
+.hero h1{font-size:16px;font-weight:650;margin:0;letter-spacing:.1px;color:#fff}
+.hero p{margin:2px 0 0;font-size:12px;color:rgba(255,255,255,.65)}
 .badge-standalone{font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;
-  background:var(--warn-soft);color:var(--warn);border:1px solid rgba(210,153,34,.3);white-space:nowrap}
+  background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);white-space:nowrap}
 
 .workspace{display:grid;grid-template-columns:300px 1fr;gap:18px;align-items:start}
 .panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px}
@@ -70,11 +51,11 @@ select:focus,input:focus{outline:2px solid var(--accent-border);outline-offset:1
   background:transparent;color:var(--text2);font-size:12px;cursor:pointer}
 .add-row-btn:hover{border-color:var(--accent-border);color:var(--accent)}
 
-.hours-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.timeframe-row{display:grid;grid-template-columns:1fr;gap:8px}
 
 .run-btn{margin-top:16px;width:100%;padding:10px;border-radius:8px;border:none;background:var(--accent);
   color:#fff;font-weight:650;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
-.run-btn:hover{filter:brightness(1.06)}
+.run-btn:hover{filter:brightness(1.08)}
 .run-btn:disabled{opacity:.5;cursor:not-allowed}
 .hint{font-size:11px;color:var(--text3);margin-top:8px;line-height:1.6}
 
@@ -90,7 +71,7 @@ select:focus,input:focus{outline:2px solid var(--accent-border);outline-offset:1
 .symbol-chip .chip-remove:hover{opacity:1}
 .symbol-empty{font-size:11.5px;color:var(--text3);margin-top:10px}
 
-.quota-note{font-size:11.5px;color:var(--warn);background:var(--warn-soft);border:1px solid rgba(210,153,34,.3);
+.quota-note{font-size:11.5px;color:var(--warn);background:var(--warn-soft);border:1px solid rgba(150,100,13,.25);
   border-radius:8px;padding:9px 11px;margin-top:12px;line-height:1.6}
 .quota-note b{font-family:var(--mono)}
 
@@ -118,7 +99,7 @@ select:focus,input:focus{outline:2px solid var(--accent-border);outline-offset:1
 .sp-row.error{background:var(--bad-soft)}
 
 .empty-state{color:var(--text3);font-size:12.5px;padding:24px 4px;text-align:center}
-.error-banner{background:var(--bad-soft);border:1px solid rgba(248,81,73,.35);border-radius:8px;
+.error-banner{background:var(--bad-soft);border:1px solid rgba(192,48,26,.3);border-radius:8px;
   padding:12px;font-size:12.5px;color:var(--text)}
 
 .results-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
@@ -156,13 +137,13 @@ table.results tbody tr.selected{background:var(--accent-soft)}
 .stat-label{color:var(--text2);font-size:12px}
 .stat-val{font-family:var(--mono);font-weight:600;font-size:12.5px}
 
-.month-chart{display:flex;align-items:flex-end;gap:10px;height:110px;padding:8px 4px 0}
-.month-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}
-.month-bar{width:100%;max-width:34px;border-radius:4px 4px 0 0}
-.month-bar.pos{background:var(--good)}
-.month-bar.neg{background:var(--bad);border-radius:0 0 4px 4px;align-self:flex-start}
-.month-label{font-size:10px;color:var(--text3);margin-top:6px;font-family:var(--mono)}
-.month-val{font-size:10px;font-family:var(--mono);margin-bottom:3px}
+.year-chart{display:flex;align-items:flex-end;gap:10px;height:110px;padding:8px 4px 0}
+.year-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}
+.year-bar{width:100%;max-width:34px;border-radius:4px 4px 0 0}
+.year-bar.pos{background:var(--good)}
+.year-bar.neg{background:var(--bad);border-radius:0 0 4px 4px;align-self:flex-start}
+.year-label{font-size:10px;color:var(--text3);margin-top:6px;font-family:var(--mono)}
+.year-val{font-size:10px;font-family:var(--mono);margin-bottom:3px}
 
 .robust-note{font-size:11.5px;color:var(--text2);background:var(--panel2);border:1px solid var(--border);
   border-radius:8px;padding:10px 12px;margin-top:12px;line-height:1.7}
@@ -171,10 +152,10 @@ table.results tbody tr.selected{background:var(--accent-soft)}
   background:var(--accent-soft);color:var(--accent);font-weight:650;font-size:12.5px;cursor:pointer}
 .adopt-btn:hover{background:var(--accent);color:#fff}
 
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+.overlay{position:fixed;inset:0;background:rgba(20,16,10,.5);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
 .overlay.open{display:flex}
 .modal{background:var(--panel);border:1px solid var(--border);border-radius:14px;width:100%;max-width:560px;
-  padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+  padding:22px;box-shadow:0 20px 60px rgba(26,32,56,.25)}
 .modal h2{font-size:15px;margin:0 0 4px}
 .modal .sub{font-size:12px;color:var(--text2);margin:0 0 16px}
 .diff-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:14px}
@@ -187,7 +168,7 @@ table.results tbody tr.selected{background:var(--accent-soft)}
 .btn-ghost{padding:8px 16px;border-radius:7px;border:1px solid var(--border2);background:transparent;color:var(--text);font-size:12.5px;cursor:pointer}
 .btn-confirm{padding:8px 16px;border-radius:7px;border:none;background:var(--good);color:#fff;font-weight:650;font-size:12.5px;cursor:pointer}
 .btn-confirm:disabled{opacity:.5;cursor:not-allowed}
-.blocked-banner{display:flex;gap:10px;align-items:flex-start;background:var(--bad-soft);border:1px solid rgba(248,81,73,.35);
+.blocked-banner{display:flex;gap:10px;align-items:flex-start;background:var(--bad-soft);border:1px solid rgba(192,48,26,.3);
   border-radius:8px;padding:12px;font-size:12px;color:var(--text);line-height:1.6}
 .blocked-banner b{color:var(--bad)}
 .apply-result{font-size:12px;margin-top:12px;padding:10px 12px;border-radius:8px}
@@ -224,10 +205,10 @@ td.disc-action .disc-add-btn+.disc-add-btn{margin-left:6px}
 
   <div class="hero">
     <div class="hero-left">
-      <div class="hero-icon">🔬</div>
+      <div class="hero-icon">🕯</div>
       <div>
-        <h1>Day Backtest Studio</h1>
-        <p>Day Trader（本番売買アプリ）とは別プロセスの分析専用アプリ — 発注機能は一切持ちません</p>
+        <h1>Swing Backtest Studio</h1>
+        <p>Swing Trader（本番売買アプリ）とは別プロセスの分析専用アプリ — 発注機能は一切持ちません</p>
       </div>
     </div>
     <span class="badge-standalone">⎋ Standalone / Read-only</span>
@@ -242,7 +223,7 @@ td.disc-action .disc-add-btn+.disc-add-btn{margin-left:6px}
     <div class="workspace">
       <div class="panel">
         <p class="panel-title">スクリーニング条件（Stage 1）</p>
-        <p class="hint" style="margin-top:0">流動性・値幅（デイトレード戦略が機能するために必要な構造的条件）を中核条件とします。「有望」の最終判断はStage 2（左でバックテストを実行）で行ってください——ここでの絞り込みだけでは有望性は保証されません。</p>
+        <p class="hint" style="margin-top:0">流動性・値幅（この戦略が機能するために必要な構造的条件）を中核条件とします。「有望」の最終判断はStage 2（左でバックテストを実行）で行ってください——ここでの絞り込みだけでは有望性は保証されません。</p>
 
         <label>市場</label>
         <select id="discMarket"><option value="US" selected>米国株（US）</option></select>
@@ -264,11 +245,11 @@ td.disc-action .disc-add-btn+.disc-add-btn{margin-left:6px}
 
         <label>算出期間（直近営業日数）</label>
         <select id="discDays">
-          <option value="1">1営業日（前日比）</option>
-          <option value="3" selected>3営業日</option>
-          <option value="5">5営業日（約1週間）</option>
+          <option value="5" selected>5営業日（約1週間）</option>
+          <option value="10">10営業日（約2週間）</option>
+          <option value="20">20営業日（約1ヶ月）</option>
         </select>
-        <p class="hint" style="margin-top:6px">デイトレードは保有期間が短いため、スイングより短い直近期間のボラティリティを見ます。</p>
+        <p class="hint" style="margin-top:6px">take_profit 10% / stop_loss 5% / 保有上限2営業日という戦略の前提に対し、この期間内に十分値動きしているかを見ます。</p>
 
         <div class="optional-block">
           <div class="check-row">
@@ -278,8 +259,7 @@ td.disc-action .disc-add-btn+.disc-add-btn{margin-left:6px}
           <div class="sub-fields" id="discGoldCrossFields">
             <label>判定に使う足種</label>
             <select id="discGoldCrossTf">
-              <option value="K_1M" selected>K_1M（1分足）</option>
-              <option value="K_5M">K_5M（5分足）</option>
+              <option value="K_DAY" selected>K_DAY（日足）</option>
               <option value="K_60M">K_60M（60分足）</option>
             </select>
           </div>
@@ -334,16 +314,22 @@ td.disc-action .disc-add-btn+.disc-add-btn{margin-left:6px}
       <div class="symbol-basket" id="symbolBasket"></div>
       <p class="symbol-empty" id="symbolEmptyHint">銘柄が未選択です</p>
 
-      <div class="quota-note" id="quotaNote" style="display:none">
-        ⚠️ 未キャッシュの銘柄が含まれる場合、初回のみOpenDへのデータ取得が発生し、クォータを消費します
-      </div>
-      <p class="hint">指標の組み合わせ（MACD/MA・KDJ/RSI）は銘柄ごとの設定に従います。登録済み銘柄はDay Trader側の「⚙ 設定」で変更してから実行してください。未登録銘柄はMACD_KDJ（標準）で実行されます。</p>
+      <div class="quota-note" id="quotaNote" style="display:none"></div>
+      <p class="symbol-empty">指標の組み合わせ（MACD/MA・KDJ/RSI）は銘柄ごとの設定に従います。登録済み銘柄はSwing Trader側の「⚙ 設定」で変更してから実行してください。未登録銘柄はMACD_KDJ（標準）で実行されます。</p>
       <div class="new-symbol-note" id="newSymbolNote" style="display:none"></div>
 
       <label>期間</label>
-      <div class="hours-row">
+      <div class="timeframe-row">
         <input type="date" id="startDate">
         <input type="date" id="endDate">
+      </div>
+
+      <label>足種（timeframe）</label>
+      <div class="timeframe-row">
+        <select id="timeframeSelect">
+          <option value="K_60M">K_60M（60分足・デフォルト）</option>
+          <option value="K_DAY">K_DAY（日足）</option>
+        </select>
       </div>
 
       <label>モード</label>
@@ -359,14 +345,8 @@ td.disc-action .disc-add-btn+.disc-add-btn{margin-left:6px}
         <button class="add-row-btn" id="addRow">＋ パラメータを追加</button>
       </div>
 
-      <label>取引時間帯（任意）</label>
-      <div class="hours-row">
-        <input type="text" id="hoursStart" placeholder="開始 09:30">
-        <input type="text" id="hoursEnd" placeholder="終了 16:00">
-      </div>
-
       <button class="run-btn" id="runBtn">▶ バックテスト実行</button>
-      <p class="hint">結果は月次の内訳つきで表示されます。単一期間の合計損益だけで採用を判断しないでください。銘柄ごとに順番（シリアル）で実行します — OpenDへの同時接続を避けるためです。</p>
+      <p class="hint">結果は年次の内訳つきで表示されます（スイングは月0〜1件程度しか取引が発生しないため、月次では頑健性の判断材料になりません）。銘柄ごとに順番（シリアル）で実行します — OpenDへの同時接続を避けるためです。</p>
     </div>
 
     <div class="panel">
@@ -402,8 +382,8 @@ td.disc-action .disc-add-btn+.disc-add-btn{margin-left:6px}
             </div>
             <div class="detail-grid">
               <div>
-                <p class="panel-title">月次の内訳（頑健性チェック）</p>
-                <div class="month-chart" id="monthChart"></div>
+                <p class="panel-title">年次の内訳（頑健性チェック）</p>
+                <div class="year-chart" id="yearChart"></div>
                 <div class="robust-note" id="robustNote"></div>
               </div>
               <div>
@@ -417,7 +397,8 @@ td.disc-action .disc-add-btn+.disc-add-btn{margin-left:6px}
       </div>
     </div>
   </div>
-</div>
+  </div>
+
 </div>
 
 <div class="overlay" id="overlay">
@@ -442,7 +423,7 @@ td.disc-action .disc-add-btn+.disc-add-btn{margin-left:6px}
 
 <div class="overlay" id="reloadNoticeOverlay">
   <div class="modal" style="max-width:440px">
-    <h2>✅ Day Traderに反映しました</h2>
+    <h2>✅ Swing Traderに反映しました</h2>
     <p class="sub" id="reloadNoticeText"></p>
     <div class="modal-actions">
       <button class="btn-confirm" id="reloadNoticeOkBtn">OK</button>
@@ -480,10 +461,13 @@ async function loadInitialData(){
         datalist.appendChild(opt);
       });
     }
-  } catch(e){ /* Day Traderが未起動でも銘柄追加自体はUIとして動くようにする */ }
+  } catch(e){ /* Swing Traderが未起動でも銘柄追加自体はUIとして動くようにする */ }
 
   try {
     defaultsCfg = await fetch('/api/defaults').then(r=>r.json());
+    if (defaultsCfg && defaultsCfg.macd && defaultsCfg.macd.timeframe){
+      $('timeframeSelect').value = defaultsCfg.macd.timeframe;
+    }
   } catch(e){ defaultsCfg = null; }
 
   await loadOpendQuota();
@@ -531,7 +515,7 @@ function renderBasket(){
   const note = $('newSymbolNote');
   if (newOnes.length){
     note.style.display = 'block';
-    note.innerHTML = '🆕 未登録銘柄: <b>' + newOnes.join('</b>・<b>') + '</b>（Day Trader標準のデフォルト設定を初期値として使用します。反映時は更新ではなく新規登録になります）';
+    note.innerHTML = '🆕 未登録銘柄: <b>' + newOnes.join('</b>・<b>') + '</b>（Swing Trader標準のデフォルト設定を初期値として使用します。反映時は更新ではなく新規登録になります）';
   } else {
     note.style.display = 'none';
   }
@@ -574,12 +558,12 @@ document.querySelectorAll('.mode-tab').forEach(t=>{
     } else if (currentMode === 'sweep'){
       gridParams.style.display = 'block';
       $('addRow').style.display = 'none';
-      if (!rows.children.length) rows.appendChild(makeGridRow(GRID_PARAM_NAMES[0], '3,5,7'));
+      if (!rows.children.length) rows.appendChild(makeGridRow(GRID_PARAM_NAMES[0], '120,300,1440'));
       while (rows.children.length > 1) rows.removeChild(rows.lastChild);
     } else {
       gridParams.style.display = 'block';
       $('addRow').style.display = 'block';
-      if (!rows.children.length) rows.appendChild(makeGridRow(GRID_PARAM_NAMES[0], '3,5,7'));
+      if (!rows.children.length) rows.appendChild(makeGridRow(GRID_PARAM_NAMES[0], '120,300,1440'));
     }
     updateRunBtnLabel();
   });
@@ -629,8 +613,7 @@ $('runBtn').addEventListener('click', async ()=>{
     start_date: startDate,
     end_date: endDate,
     grid_spec: readGridSpec(),
-    hours_start: $('hoursStart').value.trim(),
-    hours_end: $('hoursEnd').value.trim(),
+    timeframe: $('timeframeSelect').value,
   };
 
   $('runBtn').disabled = true;
@@ -648,7 +631,7 @@ $('runBtn').addEventListener('click', async ()=>{
     currentJobId = data.job_id;
     pollTimer = setInterval(pollJob, 1000);
   } catch(e){
-    showError('Backtest Studioサーバーに接続できません: ' + e);
+    showError('Swing Backtest Studioサーバーに接続できません: ' + e);
   }
 });
 
@@ -706,8 +689,9 @@ function renderResults(results){
   const symbols = [...new Set(results.map(r=>r.symbol_id))];
   const paramNames = paramNamesFromResults(results);
   const startDate = $('startDate').value, endDate = $('endDate').value;
+  const timeframe = $('timeframeSelect').value;
 
-  $('resultsTitle').textContent = `実行結果 — ${symbols.length}銘柄 / ${startDate}〜${endDate}`;
+  $('resultsTitle').textContent = `実行結果 — ${symbols.length}銘柄 / ${startDate}〜${endDate} / ${timeframe}`;
   $('resultsMeta').innerHTML = `組み合わせ数 <b>${results.length}</b>件・合計損益の降順`;
 
   const pillsEl = $('filterPills');
@@ -739,7 +723,7 @@ function renderResults(results){
     tr.innerHTML = `<td class="${idx===0?'rank1 ':''}sym-cell">${symCell}</td>` +
       paramNames.map(p=>`<td>${r.overrides[p] !== undefined ? r.overrides[p] : '—'}</td>`).join('') +
       `<td>${r.trades}</td><td class="${pnlClass}">${r.total_pnl>=0?'+':''}${r.total_pnl.toFixed(2)}</td>` +
-      `<td><span class="robust-chip ${robustClass}">${r.robust_positive}/${r.robust_total}ヶ月 黒字</span></td>`;
+      `<td><span class="robust-chip ${robustClass}">${r.robust_positive}/${r.robust_total}年 黒字</span></td>`;
     tr.addEventListener('click', ()=>selectRow(idx));
     body.appendChild(tr);
   });
@@ -760,30 +744,30 @@ function renderDetail(r){
   $('detailSection').style.display = 'block';
   const paramStr = Object.entries(r.overrides).map(([k,v])=>`${k}=${v}`).join(' / ');
   $('detailTitle').textContent = `選択中: ${r.symbol_id}${r.is_new?'（未登録）':''} ・ ${paramStr}`;
-  $('detailSub').textContent = `${$('startDate').value} 〜 ${$('endDate').value} ・ ${r.trades} trades` +
+  $('detailSub').textContent = `${$('startDate').value} 〜 ${$('endDate').value} ・ ${r.timeframe} ・ ${r.trades} trades` +
     (r.is_new ? '（デフォルト設定から出発）' : '');
 
-  const maxAbs = Math.max(1, ...r.monthly.map(m=>Math.abs(m.pnl)));
-  $('monthChart').innerHTML = r.monthly.map(m=>{
+  const maxAbs = Math.max(1, ...r.yearly.map(m=>Math.abs(m.pnl)));
+  $('yearChart').innerHTML = r.yearly.map(m=>{
     const h = Math.max(4, Math.round(Math.abs(m.pnl)/maxAbs*80));
     const cls = m.pnl >= 0 ? 'pos' : 'neg';
     const color = m.pnl >= 0 ? 'var(--good)' : 'var(--bad)';
-    return `<div class="month-col">
-      <div class="month-val" style="color:${color}">${m.pnl>=0?'+':''}${m.pnl.toFixed(1)}</div>
-      <div class="month-bar ${cls}" style="height:${h}px"></div>
-      <div class="month-label">${m.month}</div>
+    return `<div class="year-col">
+      <div class="year-val" style="color:${color}">${m.pnl>=0?'+':''}${m.pnl.toFixed(1)}</div>
+      <div class="year-bar ${cls}" style="height:${h}px"></div>
+      <div class="year-label">${m.year}</div>
     </div>`;
   }).join('');
 
   let note;
   if (r.robust_total === 0){
-    note = 'ℹ️ 期間が短く月次の内訳を計算できません。';
+    note = 'ℹ️ 期間が短く年次の内訳を計算できません。';
   } else if (r.robust_positive === r.robust_total){
-    note = `✅ ${r.robust_total}ヶ月連続で黒字。特定の月に依存した結果ではないと判断できます。`;
+    note = `✅ ${r.robust_total}年連続で黒字。特定の年（部分年含む）に依存した結果ではないと判断できます。`;
   } else if (r.robust_positive >= r.robust_total/2){
-    note = `⚠️ ${r.robust_total}ヶ月中${r.robust_positive}ヶ月が黒字。一部の月は赤字である点に注意してください。`;
+    note = `⚠️ ${r.robust_total}年中${r.robust_positive}年が黒字。一部の年は赤字である点に注意してください。`;
   } else {
-    note = `⚠️ ${r.robust_total}ヶ月中${r.robust_positive}ヶ月しか黒字でありません。単月の好成績に依存している可能性があります。`;
+    note = `⚠️ ${r.robust_total}年中${r.robust_positive}年しか黒字でありません。単年の好成績に依存している可能性があります。`;
   }
   $('robustNote').textContent = note;
 
@@ -794,6 +778,7 @@ function renderDetail(r){
     diffBody.innerHTML = Object.entries(r.overrides).map(([k,v])=>
       `<div class="stat-row"><span class="stat-label">${k}</span><span class="stat-val diff-new">${v}（デフォルト設定から変更）</span></div>`
     ).join('') +
+      `<div class="stat-row"><span class="stat-label">足種</span><span class="stat-val">${r.timeframe}</span></div>` +
       `<div class="stat-row"><span class="stat-label">勝率</span><span class="stat-val">${r.win_rate}%</span></div>` +
       `<div class="stat-row"><span class="stat-label">平均保有時間</span><span class="stat-val">${r.avg_hold_minutes}分</span></div>`;
   } else {
@@ -802,13 +787,14 @@ function renderDetail(r){
     diffBody.innerHTML = Object.entries(r.overrides).map(([k,v])=>
       `<div class="stat-row"><span class="stat-label">${k}</span><span class="stat-val"><span class="diff-old">${cur[k]!==undefined?cur[k]:'?'}</span> → <span class="diff-new">${v}</span></span></div>`
     ).join('') +
+      `<div class="stat-row"><span class="stat-label">足種</span><span class="stat-val">${r.timeframe}</span></div>` +
       `<div class="stat-row"><span class="stat-label">勝率</span><span class="stat-val">${r.win_rate}%</span></div>` +
       `<div class="stat-row"><span class="stat-label">平均保有時間</span><span class="stat-val">${r.avg_hold_minutes}分</span></div>`;
   }
 
   $('openModalBtn').textContent = r.is_new
-    ? 'この設定で Day Trader に新規登録する →'
-    : 'この設定を Day Trader に反映する →';
+    ? 'この設定で Swing Trader に新規登録する →'
+    : 'この設定を Swing Trader に反映する →';
 }
 
 // ─── 反映モーダル ────────────────────────────────────────────────
@@ -821,31 +807,30 @@ $('openModalBtn').addEventListener('click', async ()=>{
   $('confirmBtn').disabled = false;
   $('confirmBtn').textContent = r.is_new ? '新規登録する' : '反映する';
   $('modalSub').textContent = r.is_new
-    ? 'Day Trader 側に新規登録します（POST /api/symbols）。このアプリからは直接書き込みません。確認後、Day TraderのAPIへ送信します'
-    : 'Day Trader 側の data/symbols.json に反映します（このアプリからは直接書き込みません。確認後、Day TraderのAPIへ送信します）';
+    ? 'Swing Trader 側に新規登録します（POST /api/symbols）。このアプリからは直接書き込みません。確認後、Swing TraderのAPIへ送信します'
+    : 'Swing Trader 側の data/symbols.json に反映します（このアプリからは直接書き込みません。確認後、Swing TraderのAPIへ送信します）';
 
   if (r.is_new){
     $('modalTitle').textContent = `${r.symbol_id} を新規登録しますか？`;
     $('diffTableHead').innerHTML = '<tr><th>パラメータ</th><th>設定する値</th></tr>';
     $('diffTableBody').innerHTML =
       `<tr><td class="param">銘柄コード (symbol)</td><td class="diff-new">${r.symbol_id}</td></tr>` +
+      `<tr><td class="param">足種 (timeframe)</td><td class="diff-new">${r.timeframe}</td></tr>` +
       Object.entries(r.overrides).map(([k,v])=>`<tr><td class="param">${k}</td><td class="diff-new">${v}</td></tr>`).join('') +
-      '<tr><td class="param">その他の項目</td><td class="diff-new" style="color:var(--text2);font-weight:400">Day Trader標準デフォルト</td></tr>';
-    $('modalBodyText').innerHTML = `検証期間: ${$('startDate').value}〜${$('endDate').value}（${r.trades}取引・${r.robust_positive}/${r.robust_total}ヶ月黒字）。Day Traderに<b style="color:var(--text)">新規銘柄として追加</b>されます（Paper Trading・停止状態で登録、稼働はWeb GUIから手動で開始）。`;
+      '<tr><td class="param">その他の項目</td><td class="diff-new" style="color:var(--text2);font-weight:400">Swing Trader標準デフォルト</td></tr>';
+    $('modalBodyText').innerHTML = `検証期間: ${$('startDate').value}〜${$('endDate').value}（${r.trades}取引・${r.robust_positive}/${r.robust_total}年黒字）。Swing Traderに<b style="color:var(--text)">新規銘柄として追加</b>されます（Paper Trading・停止状態で登録、稼働はWeb GUIから手動で開始）。`;
     $('modalBlockedBanner').style.display = 'none';
   } else {
     $('modalTitle').textContent = `${r.symbol_id} の設定を更新しますか？`;
     $('diffTableHead').innerHTML = '<tr><th>パラメータ</th><th>現在の値</th><th>→</th><th>提案する値</th></tr>';
     const cur = (registeredMap[r.symbol_id] || {}).entry || {};
-    $('diffTableBody').innerHTML = Object.entries(r.overrides).map(([k,v])=>
-      `<tr><td class="param">${k}</td><td class="diff-old">${cur[k]!==undefined?cur[k]:'?'}</td><td>→</td><td class="diff-new">${v}</td></tr>`
-    ).join('');
-    $('modalBodyText').innerHTML = `検証期間: ${$('startDate').value}〜${$('endDate').value}（${r.trades}取引・${r.robust_positive}/${r.robust_total}ヶ月黒字）。反映後は Day Trader 側の該当銘柄を再起動すると新しい設定が有効になります。`;
-
-    // 稼働中チェック（サーバー側でも二重にチェックされる）
-    try {
-      const status = await fetch('/api/registered-symbols').then(x=>x.json());
-    } catch(e){ /* 接続不能でもモーダル自体は開ける。実際の反映はサーバー側で拒否される */ }
+    const curTf = ((registeredMap[r.symbol_id] || {}).macd || {}).timeframe;
+    $('diffTableBody').innerHTML =
+      `<tr><td class="param">足種 (timeframe)</td><td class="diff-old">${curTf||'?'}</td><td>→</td><td class="diff-new">${r.timeframe}</td></tr>` +
+      Object.entries(r.overrides).map(([k,v])=>
+        `<tr><td class="param">${k}</td><td class="diff-old">${cur[k]!==undefined?cur[k]:'?'}</td><td>→</td><td class="diff-new">${v}</td></tr>`
+      ).join('');
+    $('modalBodyText').innerHTML = `検証期間: ${$('startDate').value}〜${$('endDate').value}（${r.trades}取引・${r.robust_positive}/${r.robust_total}年黒字）。反映後は Swing Trader 側の該当銘柄を再起動すると新しい設定が有効になります。`;
     $('modalBlockedBanner').style.display = 'none';
   }
   overlay.classList.add('open');
@@ -865,7 +850,7 @@ $('confirmBtn').addEventListener('click', async ()=>{
   try {
     const resp = await fetch('/api/apply', {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ symbol_id: r.symbol_id, is_new: r.is_new, entry_overrides: r.overrides }),
+      body: JSON.stringify({ symbol_id: r.symbol_id, is_new: r.is_new, entry_overrides: r.overrides, timeframe: r.timeframe }),
     });
     const data = await resp.json();
     if (resp.ok){
@@ -881,20 +866,20 @@ $('confirmBtn').addEventListener('click', async ()=>{
     }
   } catch(e){
     resultEl.className = 'apply-result err';
-    resultEl.textContent = '⚠️ Backtest Studioサーバーに接続できません: ' + e;
+    resultEl.textContent = '⚠️ Swing Backtest Studioサーバーに接続できません: ' + e;
     $('confirmBtn').disabled = false;
   }
 });
 
-// ─── 反映完了通知（Day Trader側のリロードが必要な旨を知らせる） ────
+// ─── 反映完了通知（Swing Trader側のリロードが必要な旨を知らせる） ────
 
 const reloadNoticeOverlay = $('reloadNoticeOverlay');
 
 function showReloadNotice(symbolId){
   $('reloadNoticeText').innerHTML =
-    `<b style="color:var(--text)">${symbolId}</b> をDay Trader（別プロセス）に反映しました。` +
-    `Day Trader側の画面は銘柄一覧をページ読み込み時にしか取得しないため、` +
-    `<b style="color:var(--text)">Day Trader側のブラウザタブを手動でリロード</b>しないと反映されません。`;
+    `<b style="color:var(--text)">${symbolId}</b> をSwing Trader（別プロセス）に反映しました。` +
+    `Swing Trader側の画面は銘柄一覧をページ読み込み時にしか取得しないため、` +
+    `<b style="color:var(--text)">Swing Trader側のブラウザタブを手動でリロード</b>しないと反映されません。`;
   reloadNoticeOverlay.classList.add('open');
 }
 
@@ -913,6 +898,12 @@ document.querySelectorAll('.view-tab').forEach(t=>{
     $('discoveryView').style.display = view === 'discovery' ? 'block' : 'none';
   });
 });
+
+function switchToBacktestView(){
+  document.querySelectorAll('.view-tab').forEach(x=>x.classList.toggle('active', x.dataset.view==='backtest'));
+  $('backtestView').style.display = 'block';
+  $('discoveryView').style.display = 'none';
+}
 
 // ─── 銘柄発見（Stage 1: OpenDスクリーニング） ─────────────────────
 
@@ -964,7 +955,7 @@ $('discRunBtn').addEventListener('click', async ()=>{
     renderDiscoveryResults(data);
   } catch(e){
     $('discErrorPanel').style.display = 'block';
-    $('discErrorPanel').innerHTML = `<div class="error-banner">⚠️ Backtest Studioサーバーに接続できません: ${e}</div>`;
+    $('discErrorPanel').innerHTML = `<div class="error-banner">⚠️ Swing Backtest Studioサーバーに接続できません: ${e}</div>`;
   } finally {
     $('discRunBtn').disabled = false;
     $('discRunBtn').textContent = '🔍 候補を検索';
@@ -1051,7 +1042,7 @@ async function addToWatchlist(symbol, btn){
   } catch(e){
     btn.disabled = false;
     btn.textContent = original;
-    alert('Backtest Studioサーバーに接続できません: ' + e);
+    alert('Swing Backtest Studioサーバーに接続できません: ' + e);
   }
 }
 
@@ -1059,9 +1050,9 @@ async function addToWatchlist(symbol, btn){
 
 (function init(){
   const today = new Date();
-  const threeMonthsAgo = new Date(today.getFullYear(), today.getMonth()-3, today.getDate());
+  const threeYearsAgo = new Date(today.getFullYear()-3, today.getMonth(), today.getDate());
   const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  $('startDate').value = fmt(threeMonthsAgo);
+  $('startDate').value = fmt(threeYearsAgo);
   $('endDate').value = fmt(today);
   renderBasket();
   loadInitialData();

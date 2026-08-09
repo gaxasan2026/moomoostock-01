@@ -9,11 +9,13 @@ from typing import Optional
 
 DEFAULT_CONFIG: dict = {
     "market": "US",
-    "macd": {"fast_period": 12, "slow_period": 26, "signal_period": 9, "timeframe": "K_1M"},
+    "macd": {"fast_period": 12, "slow_period": 26, "signal_period": 9, "timeframe": "K_1M",
+             "trend_indicator": "macd", "ma_method": "ema"},
     "entry": {"gc_duration_minutes": 3.0, "macd_histogram_min": 0.0,
               "volume_surge_ratio": 1.0, "max_spread_pct": 0.1,
               "trading_hours_start": "", "trading_hours_end": "",
               "kdj_max_d": 0.0},
+    "oscillator": {"indicator": "kdj", "rsi_period": 14},
     "exit": {"peak_drop_pct": 1.5, "peak_drop_duration_minutes": 5.0,
              "peak_confirmation_bars": 3, "dead_cross": True, "dc_duration_minutes": 0.0,
              "take_profit_pct": 3.0, "stop_loss_pct": 1.5, "max_hold_minutes": 60.0},

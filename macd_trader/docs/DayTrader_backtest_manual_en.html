@@ -1,6 +1,6 @@
 
 <meta charset="utf-8">
-<title>MACD Trader — Backtest & Historical Data Manual</title>
+<title>Day Trader — Backtest & Historical Data Manual</title>
 <style>
 /* ── Token system ─────────────────────────────────────────── */
 :root {
@@ -330,7 +330,7 @@ code {
 <!-- ── Header ── -->
 <header>
   <div class="header-text">
-    <h1>MACD Trader — Backtest</h1>
+    <h1>Day Trader — Backtest</h1>
     <p>Parameter Validation with Historical Data v1.0</p>
   </div>
   <span class="header-badge">Research Tool</span>
@@ -341,12 +341,16 @@ code {
   <div class="sidebar-section">
     <div class="sidebar-label">Backtest</div>
     <a href="#overview">Overview</a>
-    <a href="#usage">Usage</a>
+    <a href="#usage">Usage (Backtest Studio)</a>
+    <a href="#engines">Switching Indicator Engines</a>
     <a href="#quota">How Quota Works</a>
     <a href="#cache">Local Cache</a>
     <a href="#fidelity">Fidelity Limitations</a>
     <a href="#results">Reading Results</a>
-    <a href="#screening">Symbol Screening</a>
+    <a href="#screening">Symbol Screening (registered symbols)</a>
+    <a href="#discovery">Symbol Discovery (market-wide screen)</a>
+    <a href="#watchlist">Add to moomoo Watchlist</a>
+    <a href="#cli">CLI Usage (for scripting)</a>
     <a href="#roadmap">Roadmap</a>
   </div>
 </nav>
@@ -358,11 +362,12 @@ code {
 <section id="overview">
   <h2>Overview</h2>
   <p>
-    <code>backtest.py</code> replays historical K-line data (fetched from moomoo OpenD) through the
+    <strong>Backtest Studio</strong> (<code>http://localhost:5002</code>) replays historical K-line data (fetched from moomoo OpenD) through the
     <strong>exact same decision logic</strong> used in live/Paper Trading (<code>macd_engine.py</code> /
     <code>signal_tracker.py</code> / <code>trade_engine.py</code> / <code>risk_manager.py</code>), bar by bar,
     to check whether a symbol's configured parameter values would actually have been effective against
-    real past price action.
+    real past price action. It's a web GUI that can test multiple symbols and parameter combinations at once,
+    runs as a <strong>separate process from Day Trader itself</strong> (port 5001), and never places any orders.
   </p>
   <p>
     Validating parameters through Paper Trading requires at least two weeks of live operation.
@@ -372,35 +377,43 @@ code {
   <div class="callout tip">
     <span class="callout-icon">💡</span>
     <div class="callout-body">
-      <strong>This manual assumes you've already read the main MACD Trader manual.</strong>
+      <strong>This manual assumes you've already read the main Day Trader manual.</strong>
       For the meaning of individual parameters (GC duration, take-profit, stop-loss, etc.), see the
-      <a href="manual_en.html">MACD Trader User Manual</a>. This manual covers only backtest-specific
+      <a href="DayTrader_manual_en.html">Day Trader User Manual</a>. This manual covers only backtest-specific
       topics: fetching historical data, quota, caching, and replay fidelity.
     </div>
   </div>
 
   <h3>Relationship to the main app</h3>
   <p>
-    <code>backtest.py</code> introduces no new trading logic. It loads a symbol's existing configuration
+    Backtest Studio calls <code>backtest.py</code> (the underlying core tool, with no trading logic of its own)
+    once per symbol under the hood. <code>backtest.py</code> loads a symbol's existing configuration
     from <code>data/symbols.json</code> and imports the exact same Python modules the live bot uses. This is
     a deliberate design choice to prevent backtest results from silently diverging from what the live bot
-    would actually do.
+    would actually do. If you want to invoke <code>backtest.py</code> directly from the command line, see
+    <a href="#cli">CLI Usage</a>.
   </p>
 </section>
 
 <!-- ══════════════════════════════════════════ -->
 <section id="usage">
-  <h2>Usage</h2>
-  <p>The target symbol must already be registered via the Web GUI or in <code>data/symbols.json</code> (its MACD, entry, exit, and risk settings are read from there).</p>
+  <h2>Usage (Backtest Studio)</h2>
+  <p>The target symbol must already be registered via the Web GUI or in <code>data/symbols.json</code> (its MACD, entry, exit, and risk settings are read from there). You can also type in an unregistered symbol directly in Studio — it starts from Day Trader's standard default configuration.</p>
 
-  <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
-    cd macd_trader<br>
-    python3 backtest.py &lt;SYMBOL&gt; &lt;start-date&gt; &lt;end-date&gt;<br><br>
-    # Example<br>
-    python3 backtest.py US.MU 2026-07-18 2026-07-24
-  </div>
-
-  <p>The console prints each simulated BUY/SELL in the same format as live trading, followed by a summary: total closed trades, total PnL, and the output file path.</p>
+  <ol class="steps">
+    <li>Open <code>http://localhost:5002</code></li>
+    <li>Add the symbols you want to test (registered symbols are suggested)</li>
+    <li>Set a date range and pick a mode:
+      <ul style="margin:6px 0 0 20px">
+        <li><strong>Single</strong>: run once with the current configuration</li>
+        <li><strong>Sweep</strong>: try one entry-config parameter across several values (<code>data/symbols.json</code> is never modified)</li>
+        <li><strong>Grid</strong>: try every combination of multiple parameters, sorted by total PnL, best first</li>
+      </ul>
+    </li>
+    <li>Click "バックテスト実行" (Run Backtest). Symbols are processed serially, one at a time, to avoid opening too many concurrent OpenD connections</li>
+    <li>Click a result row to see its <strong>monthly breakdown</strong> and a diff preview against the currently registered configuration</li>
+    <li>If a configuration looks worth adopting, click "反映する" (Apply) to write it to <code>data/symbols.json</code> — always review the diff in the confirmation dialog first</li>
+  </ol>
 
   <div class="callout warn">
     <span class="callout-icon">⚠️</span>
@@ -410,32 +423,52 @@ code {
     </div>
   </div>
 
-  <h3>Testing a single parameter (--sweep)</h3>
-  <p>Tries one entry-config parameter across several values and prints the results as a table. <code>data/symbols.json</code> is never modified — the value is swapped in memory only, per run.</p>
-
-  <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
-    python3 backtest.py US.MU 2026-07-01 2026-07-24 --sweep gc_duration_minutes 3,5,7,10,15
-  </div>
-
-  <h3>Testing parameter combinations (--grid)</h3>
-  <p>Tries every combination of multiple parameters and prints the results <strong>sorted by total PnL, best first</strong>.</p>
-
-  <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
-    python3 backtest.py US.MU 2026-07-01 2026-07-24 --grid gc_duration_minutes=3,5,7 macd_histogram_min=0,0.002,0.005
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body">
+      <strong>Combined effects are not additive in Grid mode.</strong> Sequential-dependency logic (cooldown, peak tracking) means a grid result can disagree with what you'd get from sweeping each parameter individually (the same kind of caveat as <a href="#fidelity">Fidelity Limitations</a>). The number of combinations also grows exponentially with parameter and value count — narrow down your candidate values first.
+    </div>
   </div>
 
   <div class="callout warn">
     <span class="callout-icon">⚠️</span>
     <div class="callout-body">
-      <strong>Combined effects are not additive.</strong> Sequential-dependency logic (cooldown, peak tracking) means a grid result can disagree with what you'd get from sweeping each parameter individually (the same kind of caveat as <a href="#fidelity">Fidelity Limitations</a>). The number of combinations also grows exponentially with parameter and value count — narrow down your candidate values first.
+      <strong>Don't judge a result by total P&amp;L alone.</strong> Always check the monthly breakdown to make sure a good total isn't the product of one lucky month (see <a href="#results">Reading Results</a>). Don't commit a result to <code>data/symbols.json</code> from a single run.
     </div>
   </div>
 
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body">
+      <strong>Day Trader itself (port 5001) does not refresh automatically after you apply a change.</strong> It's a separate process — reload that browser tab manually to see the updated configuration (the app also shows an on-screen reminder dialog after you apply).
+    </div>
+  </div>
+</section>
+
+<section id="engines">
+  <h2>Switching Indicator Engines</h2>
+  <p>
+    Each symbol can independently choose its trend indicator (MACD/MA) and oscillator (KDJ/RSI) —
+    see <a href="DayTrader_manual_en.html#config-engine">Day Trader User Manual — Switching Strategy Engines</a> for details.
+    Backtest Studio runs backtests using <strong>whatever's already saved in the registered symbol's config</strong>
+    (<code>data/symbols.json</code>), so there's nothing to pick in Studio itself — switch the indicator in Day Trader's
+    symbol add/edit screen first, then validate it here.
+  </p>
+
   <div class="callout tip">
     <span class="callout-icon">💡</span>
-    <div class="callout-body">
-      Don't judge either <code>--sweep</code> or <code>--grid</code> from a single run — check robustness across several months before committing a result to <code>data/symbols.json</code> (see <a href="#results">Reading Results</a>).
-    </div>
+    <div class="callout-body">Near the symbol basket you'll see a note: "指標の組み合わせ（MACD/MA・KDJ/RSI）は銘柄ごとの設定に従います" (the indicator combination follows each symbol's own configuration). <strong>Unregistered symbols</strong> (typed directly into Studio) always run on the default MACD+KDJ.</div>
+  </div>
+
+  <h3>Effect on Run Time</h3>
+  <p>
+    Backtest Studio switches between two replay engines internally. Symbols using the <strong>default MACD+KDJ</strong>
+    combination run on a numpy-vectorized fast path (<code>fast_replay.py</code>). Any other combination (MA, RSI, or
+    both) falls back to the slower, non-vectorized pandas implementation (<code>backtest.py</code>'s <code>_replay()</code>).
+  </p>
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body">Backtesting a non-default combination can be noticeably slower — several times to an order of magnitude — for the same symbol count and date range (tens of seconds for one symbol over one year). This matters most in Sweep/Grid mode, where many combinations run back-to-back. Both engines are regression-tested (<code>verify_engine_factory.py</code>) to produce numerically identical results.</div>
   </div>
 </section>
 
@@ -532,15 +565,18 @@ code {
 <section id="results">
   <h2>Reading Results</h2>
   <p>
-    The output CSV uses the <strong>exact same schema</strong> as live trading's <code>trade_logger.py</code>
-    (<code>timestamp, action, symbol, price, quantity, entry_price, pnl_usd, pnl_pct, hold_minutes,
-    exit_reason, gc_duration, daily_trades</code>).
+    Backtest Studio's result list shows a <strong>monthly breakdown</strong> and a diff preview against the
+    currently registered configuration, right on screen. Skipping the monthly breakdown and judging by total
+    P&amp;L alone risks mistaking one lucky month for a real edge, so always check it.
   </p>
   <p>
-    Output goes to <code>logs/backtest_&lt;SYMBOL&gt;_&lt;start&gt;_&lt;end&gt;.csv</code>, kept separate
-    from live trading's <code>logs/trades_&lt;SYMBOL&gt;.csv</code>. This is deliberate: we previously fixed
-    a bug where all symbols' live trades ended up commingled in one file, so backtest output is isolated on
-    purpose to avoid ever repeating that mistake.
+    Under the hood, results are also kept in the <strong>exact same CSV schema</strong> as live trading's
+    <code>trade_logger.py</code> (<code>timestamp, action, symbol, price, quantity, entry_price, pnl_usd,
+    pnl_pct, hold_minutes, exit_reason, gc_duration, daily_trades</code>). When run from the CLI directly,
+    output goes to <code>logs/backtest_&lt;SYMBOL&gt;_&lt;start&gt;_&lt;end&gt;.csv</code>, kept separate
+    from live trading's <code>logs/trades_&lt;SYMBOL&gt;.csv</code> (we previously fixed a bug where all
+    symbols' live trades ended up commingled in one file, so backtest output is isolated on purpose to avoid
+    ever repeating that mistake).
   </p>
 
   <div class="callout tip">
@@ -554,11 +590,13 @@ code {
 
 <!-- ══════════════════════════════════════════ -->
 <section id="screening">
-  <h2>Symbol Screening</h2>
+  <h2>Symbol Screening (registered symbols)</h2>
   <p>
-    A pre-check for whether a candidate symbol is well-suited to this MACD strategy, run before adding it to
-    the watchlist. Triggered from the <strong>"🔍 銘柄スクリーニング"</strong> button in the Web GUI header
-    (internally calls <code>screen.py</code>).
+    A pre-check for whether a candidate symbol is well-suited to a trend-following strategy, run before adding it to
+    the watchlist. Triggered from the <strong>"🔍 銘柄スクリーニング"</strong> button in Day Trader's own Web GUI header
+    (port 5001; internally calls <code>screen.py</code>). This is a different feature from Backtest Studio (port 5002):
+    it's a <strong>deep, time-of-day dive on one symbol you already have in mind</strong>. If you want to discover
+    candidate symbols from the whole market instead, see <a href="#discovery">Symbol Discovery</a> below.
   </p>
 
   <h3>What it does</h3>
@@ -595,13 +633,133 @@ code {
 </section>
 
 <!-- ══════════════════════════════════════════ -->
+<section id="discovery">
+  <h2>Symbol Discovery (market-wide screen)</h2>
+  <p>
+    Find symbols you haven't registered yet, using moomoo OpenD's <strong>market-wide screening API</strong>. Accessed
+    from the <strong>"🔍 銘柄発見"</strong> tab at the top of Backtest Studio (internally calls <code>screener.py</code>).
+    Where <a href="#screening">Symbol Screening</a> above digs deep into one symbol, this feature answers
+    <strong>"which symbols should I even be looking at?"</strong> across the whole market.
+  </p>
+
+  <h3>Filter Criteria</h3>
+  <div class="param-wrap">
+  <table class="param-table">
+    <thead><tr><th>Criterion</th><th>Default</th><th>Detail</th></tr></thead>
+    <tbody>
+      <tr><td class="pname">Market</td><td class="pdefault">US</td><td class="pdesc">US equities only, for now</td></tr>
+      <tr><td class="pname">Min. market cap</td><td class="pdefault">$10B</td><td class="pdesc">A floor to avoid small-cap noise and liquidity risk</td></tr>
+      <tr><td class="pname">Min. avg. turnover</td><td class="pdefault">$20M</td><td class="pdesc">Liquidity filter — directly affects how easily orders fill</td></tr>
+      <tr><td class="pname">Min. amplitude</td><td class="pdefault">5%</td><td class="pdesc">Only symbols whose high-low range over the lookback window is at least this %</td></tr>
+      <tr>
+        <td class="pname">Lookback window</td>
+        <td class="pdefault">3 trading days</td>
+        <td class="pdesc">
+          Period over which amplitude is measured. Choose 1, 3, or 5 trading days
+          <small>Shorter than Swing Backtest Studio's equivalent (5/10/20 trading days), since day trading holds for far less time and cares about more recent volatility</small>
+        </td>
+      </tr>
+      <tr>
+        <td class="pname">MACD Golden Cross (optional)</td>
+        <td class="pdefault">off</td>
+        <td class="pdesc">
+          When on, restricts results to symbols currently in a Golden Cross on the chosen timeframe (K_1M/K_5M/K_60M)
+          <small>An optional "ride the current trend" filter — not required, since real viability is judged by the Stage 2 backtest, not this filter</small>
+        </td>
+      </tr>
+      <tr><td class="pname">Max results</td><td class="pdefault">50</td><td class="pdesc">Top N by descending amplitude</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>Usage</h3>
+  <ol class="steps">
+    <li>Select the "🔍 銘柄発見" tab at the top of Backtest Studio</li>
+    <li>Set your filter criteria and click "候補を検索" (Search)</li>
+    <li>Results (symbol, price, market cap, amplitude %, avg. turnover) appear sorted by descending amplitude</li>
+    <li>Add promising symbols to the basket with "＋ バックテストへ" and validate them with a normal backtest on the "📉 バックテスト" tab</li>
+    <li>To also see a candidate in the moomoo app, use "📥 moomooへ" to <a href="#watchlist">add it to a watchlist</a></li>
+  </ol>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body">This is only a <strong>structural first pass (liquidity + volatility)</strong>. Always confirm real viability with an actual backtest (Stage 2) before deciding a symbol is worth adding.</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="watchlist">
+  <h2>Add to moomoo Watchlist</h2>
+  <p>
+    From <a href="#discovery">Symbol Discovery</a> or the backtest results list, the <strong>"📥 moomooへ"</strong> button
+    adds a candidate symbol directly to a moomoo app watchlist group (internally calls <code>modify_user_security</code>).
+    This is the only feature in Backtest Studio — which otherwise has no order-placement capability — that changes
+    anything on the moomoo side.
+  </p>
+
+  <h3>Usage</h3>
+  <ol class="steps">
+    <li>Next to the "📥 moomooへ" button on a candidate's row, pick the destination group from the dropdown (defaults to "Backtest Studio候補")</li>
+    <li>Click the button — the symbol is added to the selected group immediately (no confirmation dialog)</li>
+  </ol>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body">
+      <strong>The destination group must already exist in the moomoo app.</strong>
+      The futu API has no way to create a group — specifying a nonexistent name fails with an error ("不明なお気に入りリスト", i.e. unknown watchlist).
+      The dropdown is populated automatically from your existing custom groups.
+    </div>
+  </div>
+
+  <div class="callout tip">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body">This only adds to a watchlist. Registering a symbol for actual monitoring/trading (writing to <code>data/symbols.json</code>) is a separate action — use the "反映する" (Apply) button on a backtest result instead.</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<section id="cli">
+  <h2>CLI Usage (for scripting)</h2>
+  <p>
+    <code>backtest.py</code>, the core tool used internally by Backtest Studio, can also be run directly from
+    the command line. Use this if you want to automate it from a shell script, call it without going through
+    the GUI, or need a reproducible non-interactive invocation. Studio's Single/Sweep/Grid modes are simply
+    calling this same <code>backtest.py</code>, so results match a direct CLI run exactly.
+  </p>
+
+  <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
+    cd macd_trader<br>
+    python3 backtest.py &lt;SYMBOL&gt; &lt;start-date&gt; &lt;end-date&gt;<br><br>
+    # Example<br>
+    python3 backtest.py US.MU 2026-07-18 2026-07-24
+  </div>
+
+  <p>The console prints each simulated BUY/SELL in the same format as live trading, followed by a summary: total closed trades, total PnL, and the output file path.</p>
+
+  <h3>Testing a single parameter (--sweep)</h3>
+  <p>Tries one entry-config parameter across several values and prints the results as a table. <code>data/symbols.json</code> is never modified — the value is swapped in memory only, per run. Same as Studio's "Sweep" mode.</p>
+
+  <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
+    python3 backtest.py US.MU 2026-07-01 2026-07-24 --sweep gc_duration_minutes 3,5,7,10,15
+  </div>
+
+  <h3>Testing parameter combinations (--grid)</h3>
+  <p>Tries every combination of multiple parameters and prints the results sorted by total PnL, best first. Same as Studio's "Grid" mode.</p>
+
+  <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
+    python3 backtest.py US.MU 2026-07-01 2026-07-24 --grid gc_duration_minutes=3,5,7 macd_histogram_min=0,0.002,0.005
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
 <section id="roadmap">
   <h2>Roadmap</h2>
   <p>The current v1 is scoped to a single core loop: replay one symbol over one date range.</p>
   <ul style="margin:8px 0 0 20px;font-size:14px;color:var(--text2);line-height:1.8">
     <li><s>Parameter grid search across multiple combinations</s> — shipped as <code>--grid</code> (see <a href="#usage">Usage</a>)</li>
-    <li>Batch backtesting across multiple symbols</li>
-    <li>Integrating backtest output into <code>report.py</code></li>
+    <li><s>Batch backtesting across multiple symbols</s> — shipped as Backtest Studio, port 5002 (see <a href="#usage">Usage</a>)</li>
+    <li>Integrating backtest output into <code>report.py</code> (not started)</li>
   </ul>
 </section>
 

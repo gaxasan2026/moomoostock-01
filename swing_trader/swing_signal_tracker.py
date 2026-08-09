@@ -1,59 +1,57 @@
 """
-signal_tracker.py
-GC継続時間の計測、ポジション保有中のピーク価格追跡、
-各種状態管理を担当する
+swing_signal_tracker.py
+macd_trader/signal_tracker.py の SignalTracker を最小限フォークしたもの。
+
+唯一の差分: update() が日付境界（is_new_session）でGC/DC継続時間を
+強制リセットしない。デイトレード版は「夜間の市場休止をまたいでカウントし
+続けると無意味」という前提でリセットしていたが、スイングトレードでは
+複数日にまたがるトレンドの継続性そのものが判定材料なので、通常の
+GC⇄DC遷移検知ロジックだけに任せる（日をまたいでも遷移がなければ
+継続時間は伸び続ける）。日次取引回数・日次損益カウンター（reset_daily）は
+デイトレード版と同様に日付変更時にリセットする（スイングでは発生頻度が
+低く実害がないため、あえて別概念を作らずそのまま踏襲する）。
+
+それ以外の public インターフェース（プロパティ・メソッド）は
+SignalTracker と完全に同一。trade_engine.py / risk_manager.py / bar_signals.py は
+いずれも SignalTracker を型ヒントとしてのみ参照するダックタイピングのため、
+このクラスをそのまま代わりに渡して動作する。
 """
-from datetime import datetime, timedelta
-from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Optional
 import logging
+import sys
+from pathlib import Path
 
-from macd_engine import CrossSignal
+sys.path.insert(0, str(Path(__file__).parent.parent / "macd_trader"))
+from signal_tracker import PositionInfo  # noqa: E402  (日付ロジックを含まないため再利用)
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class PositionInfo:
-    """現在のポジション情報"""
-    entry_price: float
-    entry_time: datetime
-    quantity: int
-    peak_price: float           # 保有中の最高値
-    peak_time: datetime         # 最高値到達時刻
-    bars_since_peak: int = 0   # ピーク更新なしのバー数
-
-
-class SignalTracker:
+class SwingSignalTracker:
     """
-    GC/DC継続時間の計測とピーク価格追跡を行うクラス
-    main_loop から毎バー update() を呼ぶことで状態を更新する
+    GC/DC継続時間の計測とピーク価格追跡を行うクラス（スイングトレード版）。
+    signal_tracker.SignalTracker と同じ契約で動作する。
     """
 
-    def __init__(self, peak_confirmation_bars: int = 3):
+    def __init__(self, peak_confirmation_bars: int = 2):
         self.peak_confirmation_bars = peak_confirmation_bars
 
-        # GC/DC の開始時刻
         self._gc_start_time: Optional[datetime] = None
         self._dc_start_time: Optional[datetime] = None
 
-        # 現在のMACD/Signal値（前回比較用）
         self._prev_macd: Optional[float] = None
         self._prev_signal: Optional[float] = None
         self._current_is_golden: bool = False
 
-        # ポジション
         self.position: Optional[PositionInfo] = None
 
-        # クールダウン
         self._last_trade_time: Optional[datetime] = None
 
-        # 当日の統計
         self._daily_trades: int = 0
         self._daily_realized_pnl: float = 0.0
         self._daily_start_balance: float = 0.0
 
-        # 最新価格（外部から参照用）
         self.current_price: float = 0.0
         self.current_time: datetime = datetime.now()
 
@@ -75,25 +73,18 @@ class SignalTracker:
 
         is_golden = macd > signal
 
-        # ─ GC/DC 状態の更新 ─
+        # ─ 日次カウンターのみリセット（GC/DC継続時間は日をまたいでも維持する） ─
         if is_new_session:
-            # 取引セッションの区切り（日付変更）。夜間の市場休止をまたいで
-            # GC/DC継続時間を数え続けると無意味な値になるため、起点を当バーにリセットする。
-            self._gc_start_time = timestamp if is_golden else None
-            self._dc_start_time = None if is_golden else timestamp
-            # 日次取引回数・日次損益カウンターもリセットする
-            # （max_daily_trades/max_daily_loss_pctが複数日にまたがって
-            # 累積し続けると、2日目以降の取引が意図せず抑制されるため）
             self.reset_daily()
-        elif is_golden:
+
+        # ─ GC/DC 状態の更新（通常の遷移検知のみ。日付境界による特別扱いはしない） ─
+        if is_golden:
             if not self._current_is_golden:
-                # DCからGCに転換
                 self._gc_start_time = timestamp
                 self._dc_start_time = None
                 logger.info(f"🟢 ゴールデンクロス発生 @ {current_price:.4f}")
         else:
             if self._current_is_golden:
-                # GCからDCに転換
                 self._dc_start_time = timestamp
                 self._gc_start_time = None
                 logger.info(f"🔴 デッドクロス発生 @ {current_price:.4f}")
@@ -125,14 +116,14 @@ class SignalTracker:
 
     @property
     def gc_duration_minutes(self) -> float:
-        """GCが継続している時間（分）"""
+        """GCが継続している時間（分）。日をまたいでも蓄積され続ける"""
         if self._gc_start_time is None:
             return 0.0
         return (self.current_time - self._gc_start_time).total_seconds() / 60.0
 
     @property
     def dc_duration_minutes(self) -> float:
-        """DCが継続している時間（分）"""
+        """DCが継続している時間（分）。日をまたいでも蓄積され続ける"""
         if self._dc_start_time is None:
             return 0.0
         return (self.current_time - self._dc_start_time).total_seconds() / 60.0
@@ -258,12 +249,11 @@ class SignalTracker:
         """クールダウン残り時間（分）、0以下なら取引可能"""
         if self._last_trade_time is None:
             return 0.0
-        # cooldownはRiskManagerで判定するため、ここでは経過時間だけ返す
         elapsed = (self.current_time - self._last_trade_time).total_seconds() / 60.0
         return elapsed
 
     def reset_daily(self):
-        """日次リセット（毎朝0時に呼ぶ）"""
+        """日次リセット（日付変更時に呼ぶ）"""
         self._daily_trades = 0
         self._daily_realized_pnl = 0.0
         logger.info("📅 日次リセット完了")

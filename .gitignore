@@ -8,7 +8,14 @@ OpenD/
 macd_trader/data/symbols.json
 macd_trader/data/history/
 macd_trader/data/notification_config.json
+macd_trader/data/positions.json
 macd_trader/logs/
+swing_trader/data/symbols.json
+swing_trader/data/history/
+swing_trader/data/positions.json
+swing_trader/logs/
+swing_backtest_studio/logs/
+shared_position_cache.json
 research/results/
 
 # ── Python ────────────────────────────────────────────────────

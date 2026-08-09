@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>日次損益 - Swing Trader</title>
+<style>
+:root{
+  --bg:#f6f5f1; --panel:#ffffff; --border:#dedad4;
+  --text:#1a2038; --text2:#5a637a;
+  --accent:#1a5fc0;
+  --good:#147a4e; --bad:#c0301a;
+  --header-bg:#0e2140; --header-good:#5fd99a; --header-bad:#f0614a;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);font-size:13px}
+a{color:var(--accent)}
+
+#header{background:var(--header-bg);padding:0 16px;height:48px;display:flex;align-items:center;gap:12px}
+#header h1{font-size:15px;font-weight:600;color:#fff}
+#header h1::before{content:"🕯";margin-right:6px}
+.hbtn{padding:5px 12px;border-radius:6px;border:1px solid rgba(255,255,255,.25);background:transparent;color:#fff;cursor:pointer;font-size:12px;text-decoration:none;display:inline-block}
+.hbtn:hover{background:rgba(255,255,255,.12)}
+#range-select{margin-left:auto;padding:5px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.25);background:transparent;color:#fff;font-size:12px}
+#range-select option{color:#1a2038}
+
+#main{padding:20px;max-width:1000px;margin:0 auto}
+
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px}
+.panel h2{font-size:13px;font-weight:600;margin-bottom:12px;color:var(--text)}
+
+.legend{display:flex;gap:16px;font-size:11px;color:var(--text2);margin-bottom:10px}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend .sw{width:10px;height:10px;border-radius:2px;display:inline-block}
+
+#chart-wrap{overflow-x:auto}
+svg{display:block}
+
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{padding:6px 10px;text-align:left;color:var(--text2);font-weight:500;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:6px 10px;border-bottom:1px solid var(--border);white-space:nowrap}
+tr:last-child td{border-bottom:none}
+.num{text-align:right;font-family:monospace}
+.pos-gain{color:var(--good)}
+.pos-loss{color:var(--bad)}
+.pos-flat{color:var(--text2)}
+
+.empty{padding:24px;text-align:center;color:var(--text2)}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <a class="hbtn" href="/">← ダッシュボードへ</a>
+  <h1>日次損益（米国取引日基準）</h1>
+  <select id="range-select" onchange="load()">
+    <option value="30">直近30日</option>
+    <option value="60">直近60日</option>
+    <option value="90">直近90日</option>
+  </select>
+</div>
+
+<div id="main">
+  <div class="panel">
+    <h2>日次損益・累積損益</h2>
+    <div class="legend">
+      <span><span class="sw" style="background:#147a4e"></span>日次損益（プラス）</span>
+      <span><span class="sw" style="background:#c0301a"></span>日次損益（マイナス）</span>
+      <span><span class="sw" style="background:#1a5fc0"></span>累積損益（右軸）</span>
+    </div>
+    <div id="chart-wrap"><svg id="chart"></svg></div>
+  </div>
+
+  <div class="panel">
+    <h2>内訳</h2>
+    <table>
+      <thead><tr><th>日付（ET）</th><th class="num">損益</th><th class="num">取引数</th><th class="num">勝率</th><th class="num">累積損益</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+function pnlClass(v) { return v > 0 ? 'pos-gain' : v < 0 ? 'pos-loss' : 'pos-flat'; }
+function fmtUsd(v) { return `${v >= 0 ? '+' : ''}${v.toFixed(2)}`; }
+
+function renderChart(data) {
+  const W = Math.max(700, data.length * 26), H = 320;
+  const padL = 60, padR = 60, padT = 16, padB = 30;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const n = data.length;
+  const colW = plotW / n;
+  const barHalfH = plotH / 2;
+  const zeroY = padT + barHalfH;
+
+  const maxPos = Math.max(1, ...data.map(d => Math.max(0, d.pnl_usd)));
+  const maxNeg = Math.max(1, ...data.map(d => Math.max(0, -d.pnl_usd)));
+  const cumVals = data.map(d => d.cumulative_pnl_usd);
+  const cumMin = Math.min(0, ...cumVals), cumMax = Math.max(0, ...cumVals);
+  const cumRange = Math.max(1, cumMax - cumMin);
+
+  let bars = '', xLabels = '', points = [];
+  const labelStep = Math.max(1, Math.ceil(n / 12));
+  data.forEach((d, i) => {
+    const cx = padL + colW * i + colW / 2;
+    const barW = Math.max(3, colW * 0.55);
+    if (d.pnl_usd >= 0) {
+      const h = (d.pnl_usd / maxPos) * barHalfH;
+      bars += `<rect x="${cx - barW/2}" y="${zeroY - h}" width="${barW}" height="${Math.max(0,h)}" fill="#147a4e"><title>${d.date}: ${fmtUsd(d.pnl_usd)} USD (${d.trades}回)</title></rect>`;
+    } else {
+      const h = (-d.pnl_usd / maxNeg) * barHalfH;
+      bars += `<rect x="${cx - barW/2}" y="${zeroY}" width="${barW}" height="${Math.max(0,h)}" fill="#c0301a"><title>${d.date}: ${fmtUsd(d.pnl_usd)} USD (${d.trades}回)</title></rect>`;
+    }
+    const cy = padT + plotH - ((d.cumulative_pnl_usd - cumMin) / cumRange) * plotH;
+    points.push(`${cx},${cy}`);
+    if (i % labelStep === 0 || i === n - 1) {
+      xLabels += `<text x="${cx}" y="${H - padB + 16}" font-size="10" text-anchor="middle" fill="#5a637a">${d.date.slice(5)}</text>`;
+    }
+  });
+
+  let dots = data.map((d, i) => {
+    const cx = padL + colW * i + colW / 2;
+    const cy = padT + plotH - ((d.cumulative_pnl_usd - cumMin) / cumRange) * plotH;
+    return `<circle cx="${cx}" cy="${cy}" r="2.5" fill="#1a5fc0"><title>${d.date}: 累積 ${fmtUsd(d.cumulative_pnl_usd)} USD</title></circle>`;
+  }).join('');
+
+  const svg = document.getElementById('chart');
+  svg.setAttribute('width', W);
+  svg.setAttribute('height', H);
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = `
+    <line x1="${padL}" y1="${zeroY}" x2="${W-padR}" y2="${zeroY}" stroke="#dedad4" stroke-width="1" />
+    ${bars}
+    <polyline points="${points.join(' ')}" fill="none" stroke="#1a5fc0" stroke-width="1.5" />
+    ${dots}
+    ${xLabels}
+    <text x="${padL}" y="12" font-size="10" fill="#5a637a">日次損益(USD)</text>
+    <text x="${W-padR}" y="12" font-size="10" fill="#1a5fc0" text-anchor="end">累積損益(USD)</text>
+  `;
+}
+
+function renderTable(data) {
+  const tbody = document.getElementById('tbody');
+  if (data.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty">データがありません</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.slice().reverse().map(d => `<tr>
+    <td>${d.date}</td>
+    <td class="num ${pnlClass(d.pnl_usd)}">${d.trades ? fmtUsd(d.pnl_usd) : '—'}</td>
+    <td class="num">${d.trades}回</td>
+    <td class="num">${d.trades ? d.win_rate.toFixed(1) + '%' : '—'}</td>
+    <td class="num ${pnlClass(d.cumulative_pnl_usd)}">${fmtUsd(d.cumulative_pnl_usd)}</td>
+  </tr>`).join('');
+}
+
+async function load() {
+  const days = document.getElementById('range-select').value;
+  const r = await fetch(`/api/daily_pnl?days=${days}`);
+  const data = await r.json();
+  renderChart(data);
+  renderTable(data);
+}
+
+load();
+</script>
+</body>
+</html>

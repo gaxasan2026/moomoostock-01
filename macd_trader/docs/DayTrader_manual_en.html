@@ -1,6 +1,6 @@
 
 <meta charset="utf-8">
-<title>MACD Trader — User Manual</title>
+<title>Day Trader — User Manual</title>
 <style>
 :root {
   --bg:#f6f5f1;--surface:#ffffff;--surface2:#eeecea;--border:#dedad4;
@@ -87,7 +87,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
 <div class="layout">
 <header>
   <div class="header-text">
-    <h1>MACD Trader</h1>
+    <h1>Day Trader</h1>
     <p>moomoo OpenAPI Automated Trading System — User Manual v1.0</p>
   </div>
   <span class="header-badge">Paper Trading Ready</span>
@@ -101,13 +101,17 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
     <a href="#dashboard">Dashboard</a>
     <a href="#symbols">Symbols</a>
     <a href="#botcontrol">Bot Control</a>
+    <a href="#reconcile">Position Reconciliation</a>
+    <a href="#forcesell">Force Sell</a>
+    <a href="#dailypnl">Daily P&amp;L</a>
     <a href="#report">Post-Market Report</a>
     <a href="#notify">Discord Notifications</a>
   </div>
   <div>
     <div class="sidebar-label">Configuration</div>
     <a href="#config-basic">Basic Settings</a>
-    <a href="#config-macd">MACD</a>
+    <a href="#config-engine">Switching Strategy Engines</a>
+    <a href="#config-macd">Trend Indicator (MACD/MA)</a>
     <a href="#config-entry">Entry Conditions</a>
     <a href="#config-exit">Exit Conditions</a>
     <a href="#config-risk">Risk Management</a>
@@ -115,7 +119,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
   </div>
   <div>
     <div class="sidebar-label">Pro Strategies</div>
-    <a href="#pro-overview">MACD Limitations</a>
+    <a href="#pro-overview">Trend Indicator Limitations</a>
     <a href="#pro-symbols">Symbol Selection</a>
     <a href="#pro-timing">Trading Hours</a>
     <a href="#pro-params">Parameter Tuning</a>
@@ -129,7 +133,12 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
 
 <section id="overview">
   <h2>Overview</h2>
-  <p>MACD Trader connects to moomoo Securities via OpenAPI to detect MACD Golden Cross (GC) and Dead Cross (DC) signals and automatically trade multiple symbols simultaneously.</p>
+  <p>Day Trader connects to moomoo Securities via OpenAPI to detect Golden Cross (GC) and Dead Cross (DC) signals and automatically trade multiple symbols simultaneously. Trend detection can use either MACD or a moving-average (MA) crossover — the "GC/DC" signal names are shared across both.</p>
+
+  <div class="callout tip">
+    <span class="callout-icon">🔌</span>
+    <div class="callout-body"><strong>The indicator engine is switchable per symbol.</strong> Trend detection can be <strong>MACD</strong> or an <strong>MA crossover</strong>, and the confirmation oscillator can be <strong>KDJ</strong> or <strong>RSI</strong> — independently of each other. Backtested comparison found <strong>MA+RSI wins for day trading and MACD+KDJ wins for swing trading</strong>, so this app's registered symbols now run on MA+RSI by default. See <a href="#config-engine">Switching Strategy Engines</a> for details.</div>
+  </div>
 
   <div class="status-grid" style="grid-template-columns:1fr 1fr 1fr;margin-top:16px">
     <div class="card" style="padding:16px">
@@ -182,7 +191,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
   <h3>2. Install Python dependencies</h3>
   <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">pip install -r requirements.txt</div>
 
-  <h3>3. Start MACD Trader</h3>
+  <h3>3. Start Day Trader</h3>
   <p>Run the included launcher script. It checks whether OpenD is already listening on port <code>11111</code> and launches it automatically if not (waiting for it to come up), stops any existing web server, verifies <code>symbols.json</code> exists, and starts the app.</p>
   <div class="card" style="font-family:var(--mono);font-size:13px;color:var(--text2)">
     bash /path/to/moomoostock-01/start.sh<br><br>
@@ -224,9 +233,11 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
   <h3>Status Badges</h3>
   <div class="status-grid">
     <div class="status-card"><span class="badge badge-gray">停止中</span><div><div class="sc-label">Stopped</div><div class="sc-desc">Bot not running or stopped due to error</div></div></div>
-    <div class="status-card"><span class="badge badge-green">監視中</span><div><div class="sc-label">Monitoring</div><div class="sc-desc">Fetching K-lines, computing MACD, waiting for GC</div></div></div>
+    <div class="status-card"><span class="badge badge-green">監視中</span><div><div class="sc-label">Monitoring</div><div class="sc-desc">Fetching K-lines, computing the trend indicator (MACD or MA), waiting for GC</div></div></div>
     <div class="status-card"><span class="badge badge-blue">GC待機</span><div><div class="sc-label">GC Hold (X.Xm)</div><div class="sc-desc">Golden Cross active. Evaluating entry conditions. Time shown is GC duration.</div></div></div>
     <div class="status-card"><span class="badge badge-amber">保有中</span><div><div class="sc-label">In Position (+X.XX%)</div><div class="sc-desc">Position open. Percentage shows unrealized P&amp;L.</div></div></div>
+    <div class="status-card"><span class="badge badge-amber">自動取引: N株 / 対象外: A株</span><div><div class="sc-label">Auto: N shares / Excluded: A shares</div><div class="sc-desc">Shown when the real account holds more shares than the bot's own tracked quantity. The excess ("excluded") shares are display-only and are never traded automatically. See <a href="#reconcile">Position Reconciliation</a>.</div></div></div>
+    <div class="status-card"><span class="badge badge-red">⚠ 実残高未確認</span><div><div class="sc-label">⚠ Balance unverified</div><div class="sc-desc">The bot could not confirm the real account balance. New trades are withheld until verification succeeds, as a safety measure.</div></div></div>
   </div>
 
   <h3>Table Columns</h3>
@@ -237,7 +248,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
       <tr><td class="pname">現在値</td><td class="pdesc">Latest K-line close price (last available price when market is closed)</td></tr>
       <tr><td class="pname">ポジション</td><td class="pdesc">Entry price when a position is open</td></tr>
       <tr><td class="pname">含み益</td><td class="pdesc">Unrealized P&amp;L %. Green = profit, Red = loss</td></tr>
-      <tr><td class="pname">MACD Hist</td><td class="pdesc">Current MACD histogram (MACD line − Signal line). Positive = bullish momentum</td></tr>
+      <tr><td class="pname">MACD Hist</td><td class="pdesc">For symbols with trend indicator=MACD: the MACD histogram (MACD line − Signal line). For trend indicator=MA: the fast/slow line % spread instead (see <a href="#config-macd">Trend Indicator</a>). Positive = bullish momentum</td></tr>
       <tr><td class="pname">本日取引</td><td class="pdesc">Number of completed round-trip trades today</td></tr>
       <tr><td class="pname">本日損益</td><td class="pdesc">Realized P&amp;L for the day (USD)</td></tr>
     </tbody>
@@ -246,6 +257,9 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
 
   <h3>Log Panel</h3>
   <p>The bottom-right panel aggregates logs from all running bots in real time, polled every second. Only new entries are fetched using an incremental ID. "クリア" clears the display only — log files on disk are unaffected.</p>
+
+  <h3>Resizing panels</h3>
+  <p>Drag the handle below the symbol table, or the one between the trade history and log panels, to resize them. When the symbol table is shrunk it becomes scrollable. Sizes are saved in the browser and restored on your next visit.</p>
 </section>
 
 <section id="symbols">
@@ -260,7 +274,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
 
   <div class="callout pro">
     <span class="callout-icon">🔍</span>
-    <div class="callout-body"><strong>We recommend screening a symbol before adding it.</strong> Use the "🔍 銘柄スクリーニング" button in the header to backtest whether a candidate symbol suits this MACD strategy before committing to it. See <a href="backtest_manual_en.html#screening">Backtest Manual — Symbol Screening</a> for details.</div>
+    <div class="callout-body"><strong>We recommend screening a symbol before adding it.</strong> Use the "🔍 銘柄スクリーニング" button in the header to backtest whether a candidate symbol suits a trend-following strategy before committing to it. See <a href="DayTrader_backtest_manual_en.html#screening">Backtest Manual — Symbol Screening</a> for details.</div>
   </div>
 
   <h3>Editing and Deleting</h3>
@@ -273,7 +287,78 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
 
   <div class="callout warn">
     <span class="callout-icon">⚠️</span>
-    <div class="callout-body"><strong>Open positions are not closed automatically when a bot stops.</strong> Check and manage any open positions manually in the moomoo app.</div>
+    <div class="callout-body"><strong>Open positions are not closed automatically when a bot stops.</strong> Check and manage any open positions manually in the moomoo app. A position held while stopped is automatically restored and monitoring resumes correctly on the next start (see <a href="#reconcile">Position Reconciliation</a>).</div>
+  </div>
+</section>
+
+<section id="reconcile">
+  <h2>Position Reconciliation</h2>
+  <p>Day Trader remembers the quantity it has bought itself in <code>data/positions.json</code> — this is the "auto-traded quantity." On every poll cycle, it compares this against the real account balance and applies the following rules.</p>
+
+  <div class="param-wrap">
+  <table class="param-table">
+    <thead><tr><th>State</th><th>Behavior</th></tr></thead>
+    <tbody>
+      <tr><td class="pname">Real account = auto-traded qty</td><td class="pdesc">Match. Monitoring and trading continue normally.</td></tr>
+      <tr><td class="pname">Real account &gt; auto-traded qty</td><td class="pdesc">A manual top-up or similar. The difference is shown as "excluded" for display only — the auto-traded quantity and trading decisions are left unchanged (a manual action may have a reason).</td></tr>
+      <tr><td class="pname">Real account &lt; auto-traded qty</td><td class="pdesc">A manual sale or similar. To prevent an accidental short sale, the auto-traded quantity is <strong>immediately reduced</strong> to match the real account (down to zero if the position is fully gone).</td></tr>
+      <tr><td class="pname">Real account cannot be verified</td><td class="pdesc">e.g. an API failure. As a safety measure, any new trade decision for that cycle is withheld.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="callout tip">
+    <span class="callout-icon">🔁</span>
+    <div class="callout-body"><strong>The auto-traded quantity survives a stop/restart.</strong> Position data persists in <code>data/positions.json</code> even while a bot is stopped, so on restart the entry price, quantity, and peak-price tracking are correctly restored before monitoring resumes.</div>
+  </div>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body"><strong>Don't run the same symbol live on two bot processes at once</strong> (e.g. Day Trader and Swing Trader both trading the same ticker). Each would misread the other's orders as an external manual action, leading to unintended behavior.</div>
+  </div>
+</section>
+
+<section id="forcesell">
+  <h2>Force Sell</h2>
+  <p>Close a held position right now, without waiting for the bot's normal exit logic (take-profit, stop-loss, peak-drop, dead-cross, etc.).</p>
+
+  <ol class="steps">
+    <li>Click <strong>✕ 即時売却</strong> on a symbol's row (shown only while running with an open position), or <strong>全銘柄（稼働中）の即時売却</strong> in the header for all running symbols at once</li>
+    <li>The confirmation dialog shows the symbol's current <strong>market state</strong> (regular hours, pre-market, after-hours, closed, etc.)</li>
+    <li>Click <strong>売却する</strong> to proceed, or <strong>キャンセル</strong> / click outside the dialog to abort — nothing executes automatically</li>
+  </ol>
+
+  <div class="param-wrap">
+  <table class="param-table">
+    <thead><tr><th>Item</th><th>Detail</th></tr></thead>
+    <tbody>
+      <tr><td class="pname">Quantity sold</td><td class="pdesc">Only the bot's own tracked ("auto-traded") quantity. Excluded shares are left untouched.</td></tr>
+      <tr><td class="pname">Order type</td><td class="pdesc">Always a <strong>market order</strong>, regardless of the symbol's configured order type — this favors immediate execution.</td></tr>
+      <tr><td class="pname">Trade log reason</td><td class="pdesc">Recorded as "手動決済" (manual close), distinct from the bot's own algorithmic exits.</td></tr>
+      <tr><td class="pname">Availability</td><td class="pdesc">Only shown for symbols that are running and hold a position. For stopped symbols, close manually in the moomoo app instead.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body"><strong>Outside regular trading hours, "force sell" is not truly immediate.</strong> The confirmation dialog shows the market state and highlights a warning when the market isn't in a regular session. The market order is still accepted, but it won't actually fill until the next trading session.</div>
+  </div>
+</section>
+
+<section id="dailypnl">
+  <h2>Daily P&amp;L</h2>
+  <p>The header's "Today's P&amp;L" stat shows realized P&amp;L for the current <strong>US trading day (Eastern Time)</strong>, refreshed roughly every 30 seconds. Because JST and ET fall on different calendar dates for large parts of the day, trade-log timestamps are converted to ET internally before being grouped by day.</p>
+
+  <ol class="steps">
+    <li>Click the header amount, or the <strong>📊 日次損益</strong> button</li>
+    <li>See a <strong>daily realized P&amp;L bar chart</strong> plus a <strong>cumulative P&amp;L line</strong> for the last 30–90 days, on one screen</li>
+    <li>Switch the range with the 30/60/90-day selector</li>
+  </ol>
+
+  <div class="callout tip">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body">Only <strong>realized P&amp;L</strong> (closed via SELL) is aggregated — open-position unrealized P&amp;L is not included. Days with no trades are shown as zero so the chart doesn't have gaps.</div>
   </div>
 </section>
 
@@ -315,7 +400,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
 
   <div class="callout pro">
     <span class="callout-icon">🧪</span>
-    <div class="callout-body">To validate parameters against historical data instead of waiting two weeks of Paper Trading, see the <a href="backtest_manual_en.html">Backtest Manual</a>.</div>
+    <div class="callout-body">To validate parameters against historical data instead of waiting two weeks of Paper Trading, see the <a href="DayTrader_backtest_manual_en.html">Backtest Manual</a>.</div>
   </div>
 </section>
 
@@ -345,6 +430,11 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
   </ul>
 
   <div class="callout tip">
+    <span class="callout-icon">🏷️</span>
+    <div class="callout-body"><strong>Sender name.</strong> Swing Trader (a separate app, port 5003) shares this same webhook config file, but every message explicitly sets <code>username</code> to "Day Trader" or "Swing Trader", so notifications from both apps in the same Discord channel are distinguishable by sender name (independent of whatever display name the webhook itself was created with).</div>
+  </div>
+
+  <div class="callout tip">
     <span class="callout-icon">🔒</span>
     <div class="callout-body"><strong>Security design.</strong> The Webhook URL lives only in <code>notification_config.json</code>, which is excluded from Git and never committed. Notification content never includes account numbers, balances, or other account details. Discord webhooks are write-only — they cannot be used to read data back out or as an entry point into the bot or your account. If a notification fails to send, the exception is caught and logged; it never blocks trade execution.</div>
   </div>
@@ -369,29 +459,89 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
   </div>
 </section>
 
+<section id="config-engine">
+  <h2>Configuration — Switching Strategy Engines</h2>
+  <p>
+    Trend detection (the GC/DC signal) and the oscillator confirmation filter are each implemented as independent, swappable
+    plugins, so any symbol can use whichever combination you like. Switch them from the symbol add/edit modal —
+    <strong>"トレンド系指標" (Trend Indicator) on the "MACD" tab</strong>, and <strong>"オシレータ系指標" (Oscillator) on the "エントリー" (Entry) tab</strong>.
+  </p>
+
+  <div class="param-wrap">
+  <table class="param-table">
+    <thead><tr><th>Family</th><th>Choices</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td class="pname">Trend<br><small>(macd.trend_indicator)</small></td><td class="pdefault">macd / ma</td><td class="pdesc"><code>macd</code> = MACD (default) &nbsp; <code>ma</code> = moving-average crossover (EMA or SMA)</td></tr>
+      <tr><td class="pname">Oscillator<br><small>(oscillator.indicator)</small></td><td class="pdefault">kdj / rsi</td><td class="pdesc"><code>kdj</code> = KDJ (default) &nbsp; <code>rsi</code> = RSI</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="callout tip">
+    <span class="callout-icon">📊</span>
+    <div class="callout-body">
+      <strong>Backtested comparison (all registered symbols, last 3 years):</strong> For day trading (1-min chart),
+      <strong>MA(EMA9/21) + RSI(14) + a 0.3% spread filter</strong> clearly beat the standard <strong>MACD + KDJ</strong>
+      (profitable on 7 of 7 symbols). For swing trading (Swing Trader, a separate app), the opposite was true —
+      <strong>MACD + KDJ</strong> clearly won instead. Based on this, this app's registered symbols now default to <strong>MA + RSI</strong>.
+    </div>
+  </div>
+
+  <div class="callout pro">
+    <span class="callout-icon">🧠</span>
+    <div class="callout-body">
+      <strong>Parameters use only well-known "industry standard" values — we did not sweep-optimize them.</strong>
+      The MA periods use EMA(9, 21) and RSI uses period 14, the most widely used conventions among US-equity day traders
+      (part of a technical indicator's edge comes from many traders watching the same levels).
+      The one exception we did tune is <code>macd_histogram_min</code> (the spread filter, below) — it's a noise-rejection
+      threshold rather than a "consensus level," so it doesn't carry the same argument against tuning.
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body">
+      Always validate a new combination in <a href="DayTrader_backtest_manual_en.html">Backtest Studio</a> before
+      applying it live. Any combination other than MACD+KDJ runs on the slower, non-vectorized Python path
+      (<code>backtest.py</code>'s slow path), so backtests take noticeably longer than MACD+KDJ (tens of seconds
+      for one symbol over one year).
+    </div>
+  </div>
+</section>
+
 <section id="config-macd">
-  <h2>Configuration — MACD</h2>
-  <p>MACD (Moving Average Convergence Divergence) measures trend direction and momentum from two EMAs.</p>
+  <h2>Configuration — Trend Indicator (MACD/MA)</h2>
+  <p>MACD (Moving Average Convergence Divergence) measures trend direction and momentum from two EMAs. In MA mode, the crossover of the two moving averages themselves is used directly as the GC/DC signal.</p>
 
   <div class="callout tip">
     <span class="callout-icon">📐</span>
     <div class="callout-body">
-      <strong>Formulas:</strong><br>
+      <strong>MACD mode formulas:</strong><br>
       MACD line = EMA(fast_period) − EMA(slow_period)<br>
       Signal line = EMA(signal_period) of MACD line<br>
       Histogram = MACD line − Signal line<br><br>
-      <strong>Golden Cross (GC):</strong> MACD line crosses Signal line upward → buy signal<br>
-      <strong>Dead Cross (DC):</strong> MACD line crosses Signal line downward → sell signal
+      <strong>MA mode formulas:</strong><br>
+      Fast line = EMA or SMA(fast_period)<br>
+      Slow line = EMA or SMA(slow_period)<br>
+      Histogram equivalent = (fast line − slow line) ÷ close × 100 (% spread — normalizes across symbols at different price levels)<br><br>
+      <strong>Golden Cross (GC):</strong> the fast line (or MACD line) crosses the slow line (or Signal line) upward → buy signal<br>
+      <strong>Dead Cross (DC):</strong> the opposite → sell signal
     </div>
+  </div>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body"><strong>What the "MACD Hist" column shows depends on the mode.</strong> In MACD mode it's the actual histogram value (a price-like unit); in MA mode it's the % spread above. <code>macd_histogram_min</code> (the entry-condition threshold) is evaluated against this same displayed value, so set it as a percentage in MA mode (e.g. 0.3 = 0.3%).</div>
   </div>
 
   <div class="param-wrap">
   <table class="param-table">
     <thead><tr><th>Screen Label (key)</th><th>Default</th><th>Description</th></tr></thead>
     <tbody>
-      <tr><td class="pname">短期EMA期間<br><small>(fast_period)</small></td><td class="pdefault">12</td><td class="pdesc">Fast EMA period. Smaller = more responsive, more noise<small>1-min chart: 8–12 &nbsp; 5-min chart: 12<br><span class="range">Range: 5–26</span></small></td></tr>
-      <tr><td class="pname">長期EMA期間<br><small>(slow_period)</small></td><td class="pdefault">26</td><td class="pdesc">Slow EMA period. Must be greater than fast_period<small>1-min chart: 21–26 &nbsp; 5-min chart: 26<br><span class="range">Range: 13–52</span></small></td></tr>
-      <tr><td class="pname">シグナル期間<br><small>(signal_period)</small></td><td class="pdefault">9</td><td class="pdesc">Signal line smoothing period. Smaller = earlier crosses, more false signals<small>9 is the near-universal standard<br><span class="range">Range: 5–15</span></small></td></tr>
+      <tr><td class="pname">MA method<br><small>(macd.ma_method)</small></td><td class="pdefault">ema</td><td class="pdesc">Only used when the trend indicator is MA. How the fast/slow lines are computed.<small><code>ema</code> = exponential moving average (reacts faster to recent price — day trading)<br><code>sma</code> = simple moving average (the classic "Golden Cross" convention — swing trading)</small></td></tr>
+      <tr><td class="pname">Fast period<br><small>(fast_period)</small></td><td class="pdefault">12 (MACD)<br>9 (MA convention)</td><td class="pdesc">Fast line period. Shared field between MACD and MA modes; smaller = more responsive, more noise<small>MACD, 1-min chart: 8–12<br>MACD, 5-min chart: 12<br>MA (EMA), day trading: 9 (industry standard)<br>MA (SMA), swing: 20</small></td></tr>
+      <tr><td class="pname">Slow period<br><small>(slow_period)</small></td><td class="pdefault">26 (MACD)<br>21 (MA convention)</td><td class="pdesc">Slow line period. Must be greater than the fast period<small>MACD, 1-min chart: 21–26<br>MACD, 5-min chart: 26<br>MA (EMA), day trading: 21 (industry standard)<br>MA (SMA), swing: 50</small></td></tr>
+      <tr><td class="pname">Signal period<br><small>(signal_period)</small></td><td class="pdefault">9</td><td class="pdesc">MACD mode only. Signal line smoothing period. Smaller = earlier crosses, more false signals<small>9 is the near-universal standard<br><span class="range">Range: 5–15</span></small></td></tr>
     </tbody>
   </table>
   </div>
@@ -409,8 +559,8 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
         <td class="pdesc">Minimum time (minutes) GC must persist before entry. The most important filter.<small><strong>Too short (0–1 min):</strong> false GC signals → repeated losing entries<br><strong>Too long (10+ min):</strong> late entry → reduced profit potential<br>1-min chart: <span class="range">Recommended: 3–5 min</span><br>5-min chart: <span class="range">Recommended: 1–2 bars (5–10 min)</span></small></td>
       </tr>
       <tr>
-        <td class="pname">MACD Hist 最小値<br><small>(macd_histogram_min)</small></td><td class="pdefault">0.0</td>
-        <td class="pdesc">Minimum histogram value at entry. Filters out weak GC signals.<small>0.0 = any positive histogram (no filter)<br>0.002 = requires measurable bullish momentum<br><span class="range">Recommended: 0.0–0.005</span></small></td>
+        <td class="pname">MACD Hist 最小値<br><small>(macd_histogram_min)</small></td><td class="pdefault">0.0 (MACD)<br>0.3 (MA, recommended)</td>
+        <td class="pdesc">Minimum histogram value at entry. Filters out weak GC signals. Units depend on the trend indicator mode (see <a href="#config-macd">Trend Indicator</a>).<small>MACD mode: 0.0 = no filter, 0.002 = requires measurable momentum <span class="range">(recommended: 0.0–0.005)</span><br>MA mode (% spread): backtested 0.0–0.5%; <strong>0.3%</strong> was the most robust setting across the 7 day-trading symbols <span class="range">(recommended: 0.3%)</span></small></td>
       </tr>
       <tr>
         <td class="pname">出来高比率<br><small>(volume_surge_ratio)</small></td><td class="pdefault">1.0</td>
@@ -425,8 +575,12 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
         <td class="pdesc">Clock-time window ("HH:MM") during which new entries are allowed. Outside this window, no new position is opened even if GC conditions are met. <strong>Existing positions are always managed regardless of this setting</strong> — it only gates new entries.<small>Blank = no time restriction (entries allowed all day, as before)<br>If a backtest shows a symbol performs much better excluding the opening rush (9:30–10:00), setting the start to 10:00 is one way to apply that finding<br><span class="range">Always confirm the effect with a backtest before setting this in production</span></small></td>
       </tr>
       <tr>
-        <td class="pname">KDJ %D上限<br><small>(kdj_max_d)</small></td><td class="pdefault">0<br>(disabled)</td>
-        <td class="pdesc">Requires an additional KDJ (stochastic-family) confirmation on top of the MACD golden cross. When set, an entry is only allowed if KDJ's %D is below this value (i.e. still recovering from an oversold zone) and %K &gt; %D (a bullish KDJ turn).<small>0 = disabled (MACD alone decides, as before)<br>80 = a loose filter that barely restricts entries (shown effective for some symbols)<br>20–50 = a stricter filter (can make results worse for some symbols)<br><span class="range">Effectiveness varies a lot by symbol — always verify with a backtest per symbol before setting this</span></small></td>
+        <td class="pname">Oscillator<br><small>(oscillator.indicator)</small></td><td class="pdefault">kdj</td>
+        <td class="pdesc">Which oscillator confirms the trend signal (see <a href="#config-engine">Switching Strategy Engines</a>).<small><code>kdj</code> = KDJ (%K/%D). The "KDJ %D ceiling" row below is evaluated against KDJ's %D<br><code>rsi</code> = RSI (period set via <code>rsi_period</code>, default 14). The same row below is evaluated against the raw RSI value</small></td>
+      </tr>
+      <tr>
+        <td class="pname">KDJ %D上限<br><small>(kdj_max_d)</small></td><td class="pdefault">0 (disabled, KDJ)<br>70 (RSI, recommended)</td>
+        <td class="pdesc">Requires an additional oscillator confirmation on top of the GC signal. When set, an entry is only allowed if the value is below this threshold (still recovering from oversold, or for RSI, not yet overbought). The field name is historically KDJ-specific but plays the same role for RSI.<small><strong>KDJ mode:</strong> %D below this value AND %K &gt; %D (a bullish turn). 0 = disabled, 80 = a loose filter, 20–50 = stricter<br><strong>RSI mode:</strong> RSI below this value. 70 is the classic "avoid overbought" line (used by the registered day-trading symbols)<br><span class="range">Effectiveness varies a lot by symbol and oscillator — always verify with a backtest before setting this</span></small></td>
       </tr>
     </tbody>
   </table>
@@ -486,7 +640,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
 
 <section id="pro-overview">
   <div class="pro-header">
-    <h2>Pro Strategies: Getting the Most from MACD Trading</h2>
+    <h2>Pro Strategies: Getting the Most from MACD/MA Trading</h2>
     <p>Practical guidance from an algorithmic trading perspective</p>
   </div>
 
@@ -495,16 +649,21 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
     <div class="callout-body"><strong>This is educational content, not financial advice.</strong> Trading carries risk of loss. All decisions are your own responsibility.</div>
   </div>
 
-  <p>MACD is a powerful trend-following indicator, but it is not a magic formula. Using it effectively requires knowing <strong>when it works</strong> and <strong>when it doesn't</strong>.</p>
+  <p>MACD and MA are both powerful trend-following indicators, but neither is a magic formula. Using either effectively requires knowing <strong>when a trend indicator works</strong> and <strong>when it doesn't</strong> — this applies equally to both MACD and MA mode.</p>
 
   <div class="insight-block">
-    <h3>When MACD Works</h3>
+    <h3>When Trend Indicators Work</h3>
     <p>Strong directional trends, sustained momentum after news or earnings, clear breakouts with volume confirmation, trending markets with price making higher highs.</p>
   </div>
 
   <div class="insight-block">
-    <h3>When MACD Fails</h3>
+    <h3>When Trend Indicators Fail</h3>
     <p>Sideways / range-bound markets (generates repeated false crosses), major macro events (FOMC, CPI — unpredictable spike-and-reverse behavior), low-volume hours. <strong>The best action during these conditions is to stop the bots.</strong></p>
+  </div>
+
+  <div class="callout tip">
+    <span class="callout-icon">📊</span>
+    <div class="callout-body"><strong>MACD vs. MA in practice:</strong> MACD's built-in signal-line smoothing makes it more resistant to false signals, pairing well with a duration filter like <code>gc_duration_minutes</code>. A raw MA crossover (especially EMA) reacts faster but is noisier, and instead pairs well with <code>macd_histogram_min</code> (the % spread filter). Backtested comparison found this difference in behavior is exactly why <strong>day trading favors MA+RSI while swing trading favors MACD+KDJ</strong> — see <a href="#config-engine">Switching Strategy Engines</a>.</div>
   </div>
 </section>
 
@@ -513,7 +672,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
 
   <div class="callout pro">
     <span class="callout-icon">✅</span>
-    <div class="callout-body"><strong>Ideal MACD day-trading candidates:</strong> Average daily volume 10M+ shares / Market cap $10B+ / High beta (moves more than the market)</div>
+    <div class="callout-body"><strong>Ideal trend-following day-trading candidates:</strong> Average daily volume 10M+ shares / Market cap $10B+ / High beta (moves more than the market)</div>
   </div>
 
   <div class="card">
@@ -569,10 +728,11 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
 <section id="pro-params">
   <h2>Parameter Tuning</h2>
 
-  <h3>Recommended starting points by timeframe</h3>
+  <h3>Recommended starting points by timeframe (MACD mode)</h3>
+  <p style="font-size:13px;color:var(--text2)">In MA mode, don't sweep the period values — use the <a href="#config-macd">industry-standard values</a> (EMA9/21, SMA20/50) instead. This table shows MACD-mode targets by timeframe.</p>
   <div class="param-wrap">
   <table class="param-table">
-    <thead><tr><th>Timeframe</th><th>MACD</th><th>GC Duration</th><th>Stop Loss</th><th>Take Profit</th><th>Max Hold</th></tr></thead>
+    <thead><tr><th>Timeframe</th><th>MACD (fast-slow-signal)</th><th>GC Duration</th><th>Stop Loss</th><th>Take Profit</th><th>Max Hold</th></tr></thead>
     <tbody>
       <tr><td class="pdesc"><strong>1-min</strong><br><small>Scalping</small></td><td class="pdefault">8-21-5</td><td class="pdefault">2–3 min</td><td class="pdefault">0.5–1%</td><td class="pdefault">1.5–2%</td><td class="pdefault">30–60 min</td></tr>
       <tr><td class="pdesc"><strong>5-min</strong><br><small>Day trading</small></td><td class="pdefault">12-26-9</td><td class="pdefault">1–2 bars</td><td class="pdefault">1–2%</td><td class="pdefault">3–5%</td><td class="pdefault">2–3 hrs</td></tr>
